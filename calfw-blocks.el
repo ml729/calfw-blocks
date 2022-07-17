@@ -23,6 +23,11 @@
   :group 'calfw-blocks
   :type 'number)
 
+(defcustom calfw-blocks-lines-per-hour 4
+  "Number of lines per hour in a block."
+  :group 'calfw-blocks
+  :type 'number)
+
 (defun calfw-blocks-view-week ()
     "Render weekly block calendar view.")
 
@@ -75,15 +80,57 @@ return an alist of rendering parameters."
       (cell-height . ,cell-height)
       (total-width . ,total-width)
       (columns . ,cfw:week-days))))
+
+(defun calfw-blocks-view-week-calc-param (dest)
+  "[internal] Calculate cell size from the reference size and
+return an alist of rendering parameters."
+  (let*
+      ((time-width 5)
+       (time-hline (make-string time-width ? ))
+       (win-width (cfw:dest-width dest))
+       ;; title 2, toolbar 1, header 2, hline 2, footer 1, margin 2 => 10
+       (win-height (max 15 (- (cfw:dest-height dest) 10)))
+       (junctions-width (* (char-width cfw:fchar-junction) 8))
+       (cell-width  (cfw:round-cell-width
+                     (max 5 (/ (- win-width junctions-width time-width) 7))))
+       (cell-height (max 2 win-height))
+       (total-width (+ time-width (* cell-width cfw:week-days) junctions-width)))
+    `((cell-width . ,cell-width)
+      (cell-height . ,cell-height)
+      (total-width . ,total-width)
+      (columns . ,cfw:week-days)
+      (time-width . ,time-width)
+      (time-hline . ,time-hline))))
+
+;; (defun calfw-blocks-view-block-week-model (model)
+;;   "[internal] Create a logical view model of weekly calendar.
+;; This function collects and arranges contents.  This function does
+;; not know how to display the contents in the destinations."
+;;   (let* ((init-date (cfw:k 'init-date model))
+;;          (begin-date (cfw:week-begin-date init-date))
+;;          (end-date (cfw:week-end-date init-date)))
+;; (cfw:model-create-updated-view-data
+;;    model
+;;    (cfw:view-model-make-common-data
+;;     model begin-date end-date
+;;     `((headers . ,(cfw:view-model-make-day-names-for-week)) ; a list of the index of day-of-week
+;;       (weeks . ,(cfw:view-model-make-weeks ; a matrix of day-of-month, which corresponds to the index of `headers'
+;;                  (cfw:week-begin-date begin-date)
+;;                  (cfw:week-end-date   end-date))))))
+
+;;     ))
+
 (defun calfw-blocks-view-block-week (component)
   "[internal] Render weekly calendar view."
   (let* ((dest (cfw:component-dest component))
-         (param (cfw:render-append-parts (cfw:view-week-calc-param dest)))
+         (param (cfw:render-append-parts (calfw-blocks-view-week-calc-param dest)))
          (total-width (cfw:k 'total-width param))
+         (time-width (cfw:k 'time-width param))
          (EOL (cfw:k 'eol param))
          (VL (cfw:k 'vl param))
-         (hline (cfw:k 'hline param))
-         (cline (cfw:k 'cline param))
+         (time-hline (cfw:k 'time-hline param))
+         (hline (concat time-hline (cfw:k 'hline param)))
+         (cline (concat time-hline (cfw:k 'cline param)))
          (model (cfw:view-week-model (cfw:component-model component)))
          (begin-date (cfw:k 'begin-date model))
          (end-date (cfw:k 'end-date model)))
@@ -98,6 +145,10 @@ return an alist of rendering parameters."
                              'cfw:navi-previous-week-command
                              'cfw:navi-next-week-command)
      EOL hline)
+    ;; time header
+    ;; (insert cline)
+    (insert (cfw:rt (cfw:render-right time-width "Time")
+                           'default))
     ;; day names
     (cfw:render-day-of-week-names model param)
     (insert VL EOL cline)
@@ -225,14 +276,44 @@ b is the minute."
           (seq-sort (lambda (a b) (< (car a) (car b)))
                     periods-stack)))
 
+(defun calfw-blocks-format-time (t)
+  (format "%02d:%02d" (car t) (cadr t)))
+
+(defun calfw-blocks-time-column (time-width cell-height)
+  (let* ((num-hours (floor (/ cell-height calfw-blocks-lines-per-hour)))
+        (start-hour (car calfw-blocks-earliest-visible-time))
+        (start-minute (cadr calfw-blocks-earliest-visible-time))
+        (times-lst (mapcar (lambda (x) (list (+ x start-hour) start-minute))
+                           (number-sequence 0 (1- num-hours)))))
+    (print (mapcan (lambda (x) (append (list (calfw-blocks-format-time x))
+                              (mapcar (lambda (x) (make-string time-width ? ))
+                                      (number-sequence 0 (1- calfw-blocks-lines-per-hour)))))
+            times-lst))
+    )
+  )
+
 (defun calfw-blocks-render-columns (day-columns param)
   "[internal] This function concatenates each rows on the days into a string of a physical line.
 DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (DAY-TITLE . ANNOTATION-TITLE) STRING STRING...)."
-  (let ((cell-width  (cfw:k 'cell-width  param))
+  (let* ((cell-width  (cfw:k 'cell-width  param))
         (cell-height (cfw:k 'cell-height param))
-        (EOL (cfw:k 'eol param)) (VL (cfw:k 'vl param))
-        (hline (cfw:k 'hline param)) (cline (cfw:k 'cline param)))
+        (time-width (cfw:k 'time-width param))
+        (EOL (cfw:k 'eol param))
+        (VL (cfw:k 'vl param))
+        (time-hline (cfw:k 'time-hline param))
+        (hline (concat time-hline (cfw:k 'hline param)))
+        (cline (concat time-hline (cfw:k 'cline param))))
     ;; day title
+    ;; (push day-columns)
+    ;; (insert
+    ;;        VL (cfw:tp
+    ;;                (cfw:render-default-content-face
+    ;;                 (cfw:render-add-right cell-width "Time" "")
+    ;;                 'cfw:face-day-title)
+    ;;                'cfw:date date)
+    ;;        ;; (cfw:render-left cell-width "")
+    ;;        )
+    (insert time-hline)
     (loop for day-rows in day-columns
           for date = (car day-rows)
           for (tday . ant) = (cadr day-rows)
@@ -246,14 +327,20 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                    'cfw:date date)
                 (cfw:render-left cell-width ""))))
     (insert VL EOL)
+    ;; (print cell-height) ;; 39
+    ;; (print cell-width) ;; 17
     ;; day contents
+    ;; (mapc (lambda (x) (insert (cfw:render-left time-width x) EOL))
+    ;;       )
     (loop with breaked-day-columns =
           (loop for day-rows in day-columns
                 for (date ants . lines) = day-rows
                 collect
                 (cons date (calfw-blocks-render-event-blocks
                             lines cell-width (1- cell-height))))
+          with time-columns = (calfw-blocks-time-column time-width cell-height)
           for i from 1 below cell-height do
+          (insert (cfw:render-left time-width (nth (1- i) time-columns)))
           (loop for day-rows in breaked-day-columns
                 for date = (car day-rows)
                 for row = (nth i day-rows)
@@ -271,25 +358,44 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
   (apply 'propertize (concat propstr1 str2)
          (cfw:extract-text-props propstr1)))
 
+(defun calfw--time-pair-to-decimal (p)
+  (+ (car p) (/ (cadr p) 60.0)))
 (defun calfw-blocks-render-event-blocks (lines cell-width cell-height)
   ""
   ;; filter lines based on text property calfw-blocks-interval
   ;; for those with start time, pad with spacing until it reaches the
   ;; right height. need variable for number of lines per hour.
   ;; then split the string
-  (and lines
-       (let ((num (/ cell-height (length lines))))
-         (cond
-          ((> 2 num) lines)
-          (t
-           (loop with total-rows = nil
-                 for line in lines
-                 for rows = (funcall cfw:render-line-breaker line cell-width num)
-                 do
-                 (when total-rows
-                   (cfw:render-add-item-separator-sign total-rows))
-                 (setq total-rows (append total-rows rows))
-                 finally return total-rows))))))
+  (mapcan (lambda (line)
+            (let ((interval (get-text-property 0 'calfw-blocks-interval line)))
+              (if (and interval (car interval))
+                  (let* (
+                         (start (calfw--time-pair-to-decimal (car interval)))
+                         (end (calfw--time-pair-to-decimal (cdr interval)))
+                         (block-height (round (max 1 (* (- end start) 4))))
+                         )
+                    (cfw:render-line-breaker-simple (propertize (calfw--concat-preserve-property line
+                                                                                                 "\n\n   \n")
+                                                                'face  'isearch)
+                                                    cell-width
+                                                    20)
+              )
+              (list line))))
+          lines))
+  ;; (and lines
+  ;;      (let ((num (/ cell-height (length lines))))
+  ;;        (cond
+  ;;         ((> 2 num) lines)
+  ;;         (t
+  ;;          (loop with total-rows = nil
+  ;;                for line in lines
+  ;;                for rows = (funcall cfw:render-line-breaker line cell-width num)
+  ;;                do
+  ;;                (when total-rows
+  ;;                  (cfw:render-add-item-separator-sign total-rows))
+  ;;                (setq total-rows (append total-rows rows))
+  ;;                finally return total-rows)))))
+
 ;;; testing
 
 ;; (defun cfw:render-columns (day-columns param)
