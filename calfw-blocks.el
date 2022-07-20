@@ -287,7 +287,7 @@ b is the minute."
                            (number-sequence 0 (1- num-hours)))))
     (print (mapcan (lambda (x) (append (list (calfw-blocks-format-time x))
                               (mapcar (lambda (x) (make-string time-width ? ))
-                                      (number-sequence 0 (1- calfw-blocks-lines-per-hour)))))
+                                      (number-sequence 0 (- calfw-blocks-lines-per-hour 2)))))
             times-lst))
     )
   )
@@ -354,34 +354,196 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
     (insert cline)))
 
 
-(defun calfw--concat-preserve-property (propstr1 str2)
+(defun calfw-blocks--concat-preserve-property (propstr1 str2)
   (apply 'propertize (concat propstr1 str2)
          (cfw:extract-text-props propstr1)))
 
-(defun calfw--time-pair-to-decimal (p)
+
+(defun calfw-blocks--interval-member? (elem a)
+  "Return t iff ELEM is within interval A."
+  (and (< elem (cadr a)) (>= elem (car a))))
+
+(defun calfw-blocks--interval-intersect? (a b)
+  "Return t iff intervals A and B intersect.
+Return nil otherwise. Ain interval [a1, a2) is represented as a
+list '(a1 a2)."
+  (or (calfw-blocks--interval-member? (car a) b)
+      (calfw-blocks--interval-member? (car b) a)))
+
+(defun calfw-blocks--interval-intersection (a b)
+  "Compute intersection of intervals A and B.
+An interval [a1, a2) is represented as a list '(a1 a2).
+Return nil if intersection is empty."
+  (if (calfw-blocks--intervals-intersect? a b)
+      (let ((start (max (car a) (car b)))
+            (end (min (cadr a) (cadr b))))
+        (list start end))))
+
+(defun calfw-blocks--interval-subtract (a lst)
+  "Return interval(s) resulting from removing intervals in LST from A.
+Assume that all intervals in lst are disjoint and subsets of A."
+  (let ((lst (seq-sort (lambda (x y) (< (car x) (car y))) lst)))
+
+  ))
+
+(defun calfw-blocks--interval-distribute (lst n)
+  "Return N intervals of approx equal size, whose union is the union of LST."
+
+  )
+
+(defun calfw-blocks--get-intersection-groups (lines-lst)
+  (let ((groups '())
+        (prev-line-indexes '()))
+    (dotimes (i (length lines-lst))
+      (let ((i-interval (nth 1 (nth i lines-lst)))
+            (i-intersects-indexes '(i)))
+        (if (not groups)
+            (push (cons i-interval (list i)) groups))
+        (dolist (g groups)
+          (when (and (calfw-blocks--interval-intersect? (car g) i-interval)
+                     (not (member i (cdr g))))
+            (dolist (elem (cdr g)) (push elem i-intersects-indexes))
+            (setcdr g (reverse (cons i (cdr g))))))
+        (dolist (j prev-line-indexes)
+          (let ((j-interval (nth 1 (nth j lines-lst))))
+            (if (not (member j i-intersects-indexes))
+                (if (calfw-blocks--interval-intersect? i-interval j-interval)
+                    (push (cons (calfw-blocks--interval-intersection i-interval j-interval)
+                                (list i j)) groups))))))
+      (push i prev-line-indexes))
+    (seq-sort (lambda (a b) (> (length a) (length b))) groups)))
+
+
+(defun calfw-blocks--get-block-positions (lines cell-width)
+  (let* ((lines-lst (mapcar (lambda (x) (list x (calfw--get-block-vertical-position x) nil)) lines))
+         (groups (calfw-blocks--get-intersection-groups lines-lst)))
+    (dolist (g groups)
+      (let* ((taken-intervals (seq-filter (lambda (x) x)
+                                          (seq-map (lambda (x) (nth 2 x)) lines-lst)))
+             (lines-left-in-group (- (1- (length g)) (length taken-intervals)))
+             (remaining-intervals (calfw-blocks--interval-subtract '(0 cell-width) taken-intervals))
+             (distributed-intervals (calfw-blocks--interval-distribute remaining-intervals lines-left-in-group)))
+        (dolist (x (cdr g))
+          (when (not (nth 2 x))
+            (setcar (cddr x) (pop distributed-intervals))))))
+      lines-lst))
+
+(defun calfw-blocks-round-start-time (time)
+  (floor time))
+(defun calfw-blocks-round-start-time (time)
+  (ceiling time))
+(defun calfw-blocks--get-block-vertical-position (p)
+  "[inclusive, exclusive)"
+  (let ((float-interval (calfw-blocks--get-float-time-interval p))
+        (start-time (calfw-blocks--time-pair-to-float calfw-blocks-earliest-visible-time))
+        (minutes-per-line (/ 60 calfw-blocks-lines-per-hour))))
+  (cons (calfw-blocks-round-start-time (* calfw-blocks-lines-per-hour (- (car float-interval) start-time)))
+  (calfw-blocks-round-end-time (* calfw-blocks-lines-per-hour (- (cdr float-interval) start-time)))))
+
+
+(defun calfw-blocks--time-pair-to-float (p)
   (+ (car p) (/ (cadr p) 60.0)))
+
+(defun calfw--get-float-time-interval (line)
+  (let* ((interval (get-text-property x 'calfw-blocks-interval))
+         (start (calfw-blocks--time-pair-to-decimal (car interval)))
+         (end (calfw-blocks--time-pair-to-decimal (cdr interval))))
+    (list start end)))
+
+(defun calfw-blocks-generalized-substring (s start end)
+  (cond ((<= end (length s)) (substring s start end))
+        ((< start (length s)) (concat (substring s start (length s))
+                                      (make-string (- (- end start) (- (length s) start)) ? )))
+        (t (make-string (- end start) ? ))))
+
+(defun calfw-blocks-split-single-block (block cell-width face)
+  ;; does substring preserve properties?
+  (let* ((block-string (car block))
+        (block-vertical-pos (cadr block))
+        (block-horizontal-pos (caddr block))
+        (block-width (- (cdr block-horizontal-pos) (car block-horizontal-pos)))
+        (block-height (- (cdr block-vertical-pos) (car block-vertical-pos)))
+        (end-of-cell (= (cdr block-horizontal-pos) cell-width))
+        (block-width-adjusted (if end-of-cell block-width (1- block-width)))
+        (rendered-block '()))
+    (dolist (i (number-sequence 0 (- block-height 1)))
+      (push (list (+ (car block-vertical-pos) i)
+                  (propertize (concat
+                               (calfw-blocks-generalized-substring block-string (* i block-width-adjusted) (* (1+ i) block-width-adjusted))
+                               (when (not end-of-cell) "|")
+                               )
+                              'face
+                              face
+                              ))
+            rendered-block)
+      )
+    ;; (push (list (1- (cdr block-vertical-pos))
+    ;;             (propertize (concat (make-string block-width-adjusted ?-)
+    ;;                                 (when (not end-of-cell) "+")) 'face face)) rendered-block)
+    (reverse rendered-block)))
+(setq block-positions `(("test1" (1 . 4) (0 . 20))
+                            ("test2" (5 . 7) (0 . 20))
+                            ("test3" (9 . 10) (0 . 20))
+                            ))
+
+;; (calfw-blocks-split-single-block (car block-positions) 20)
+
+(setq calfw-blocks-block-faces
+      '(ffap isearch))
+
 (defun calfw-blocks-render-event-blocks (lines cell-width cell-height)
   ""
+  (let* (
+         ;; (block-positions (calfw-blocks--get-block-positions lines cell-width))
+         (block-positions `(("test1" (1 . 4) (0 . ,cell-width))
+                            ("test2" (5 . 7) (0 . ,cell-width))
+                            ("test3" (15 . 20) (0 . 10))
+                            ("test3" (15 . 20) (10 . ,cell-width))
+                            ))
+         (split-blocks (seq-sort (lambda (a b) (< (car a) (car b)))
+                                 (mapcan (lambda (b) (calfw-blocks-split-single-block b cell-width 'isearch))
+                                  block-positions)))
+         (rendered-lines '()))
+    (dolist (i (number-sequence 0 (1- cell-height)))
+    ;; sort rendered blocks by car, iterate through lines starting at 0 going to cell height
+    ;; whenever there is an empty line, add spaces and new line
+    ;; concatenate anythings on the same line
+      (if (or (not split-blocks) (< i (caar split-blocks)))
+          (if (= (mod i calfw-blocks-lines-per-hour) 0)
+          (push (make-string cell-width ?-) rendered-lines)
+          (push (make-string cell-width ? ) rendered-lines))
+        (let ((current-line '()))
+          (while (and split-blocks (= i (caar split-blocks)))
+            (push (cadr (pop split-blocks)) current-line)
+            )
+          (push (string-join (reverse current-line) "") rendered-lines)
+          )
+        )
+      )
+    (reverse rendered-lines)
+    )
+  )
   ;; filter lines based on text property calfw-blocks-interval
   ;; for those with start time, pad with spacing until it reaches the
   ;; right height. need variable for number of lines per hour.
   ;; then split the string
-  (mapcan (lambda (line)
-            (let ((interval (get-text-property 0 'calfw-blocks-interval line)))
-              (if (and interval (car interval))
-                  (let* (
-                         (start (calfw--time-pair-to-decimal (car interval)))
-                         (end (calfw--time-pair-to-decimal (cdr interval)))
-                         (block-height (round (max 1 (* (- end start) 4))))
-                         )
-                    (cfw:render-line-breaker-simple (propertize (calfw--concat-preserve-property line
-                                                                                                 "\n\n   \n")
-                                                                'face  'isearch)
-                                                    cell-width
-                                                    20)
-              )
-              (list line))))
-          lines))
+
+  ;; (mapcan (lambda (line)
+  ;;           (let ((interval (get-text-property 0 'calfw-blocks-interval line)))
+  ;;             (if (and interval (car interval))
+  ;;                 (let* (
+  ;;                        (start (calfw--time-pair-to-decimal (car interval)))
+  ;;                        (end (calfw--time-pair-to-decimal (cdr interval)))
+  ;;                        (block-height (round (max 1 (* (- end start) 4))))
+  ;;                        )
+  ;;                   (cfw:render-line-breaker-simple (propertize (calfw--concat-preserve-property line
+  ;;                                                                                                "\n\n   \n")
+  ;;                                                               'face  'isearch)
+  ;;                                                   cell-width
+  ;;                                                   20)
+  ;;             )
+  ;;             (list line))))
+  ;;         lines))
   ;; (and lines
   ;;      (let ((num (/ cell-height (length lines))))
   ;;        (cond
