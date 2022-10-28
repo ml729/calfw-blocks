@@ -33,8 +33,12 @@
 Also used for events with a start time and no end time."
   :group 'calfw-blocks
   :type 'number)
+(defcustom calfw-blocks-min-block-width 3
+  "Minimum width of blocks in characters."
+  :group 'calfw-blocks
+  :type 'number)
 
-
+(setq calfw-blocks-min-block-width 3)
 (defcustom calfw-blocks-show-time-grid t
   "Whether to show horizontal lines for each hour."
   :group 'calfw-blocks
@@ -438,6 +442,27 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
     ;;        ;; (cfw:render-left cell-width "")
     ;;        )
     (insert time-hline)
+
+    ;; convert to regular lisp style
+    ;; (let ((breaked-date-columns
+    ;;        (dolist (day-rows day-columns)
+    ;;          (let ((date (car day-rows))
+    ;;                (tday (caadr day-rows))
+    ;;                (ant (cdadr day-rows)))
+    ;;            ))))
+    ;; (dolist (day-rows breaked-date-columns)
+    ;;   (let ((date (car day-rows))
+    ;;         (tday (caadr day-rows))
+    ;;         (ant (cdadr day-rows)))
+    ;;     (insert
+    ;;        VL (if date
+    ;;               (cfw:tp
+    ;;                (cfw:render-default-content-face
+    ;;                 (cfw:render-add-right cell-width tday ant)
+    ;;                 'cfw:face-day-title)
+    ;;                'cfw:date date)
+    ;;             (cfw:render-left cell-width "")))
+    ;;     )))
     (loop for day-rows in day-columns
           for date = (car day-rows)
           for (tday . ant) = (cadr day-rows)
@@ -682,24 +707,42 @@ Assume that all intervals in lst are disjoint and subsets of A."
                                           )))
              (lines-left-in-group (- (length (cdr g)) (length taken-intervals)))
              (remaining-intervals (calfw-blocks--interval-subtract-many `(0 ,cell-width) taken-intervals))
+             (remaining-intervals-length (reduce '+ (mapcar (lambda (x) (- (cadr x) (car x))) remaining-intervals)))
+             (exceeded-cell-width (< (/ remaining-intervals-length lines-left-in-group) calfw-blocks-min-block-width))
+             (truncated-lines-left-in-group (if exceeded-cell-width (floor (/ remaining-intervals-length calfw-blocks-min-block-width))
+                                              lines-left-in-group))
+             (lines-left-out (- lines-left-in-group truncated-lines-left-in-group))
              ;; if there is not enough space, reduce lines-left-in-group; and manually add a +k block to new-lines-lst
              ;; the total remaining interval length is (reduce '+ (mapcar (lambda (x) (- (cadr x) (car x))) remaining-intervals))
              ;; do a check to see if dividng this by lines-left-in-group, is at least the minimum viable block width
              ;; if not, you need to remove n, such that lines-left-in-group - n + 1 is ok, where the last block is going to be width 1 or 2
-             (distributed-intervals (reverse (calfw-blocks--interval-distribute remaining-intervals lines-left-in-group)))
+             ;; problem: if we remove an interval, do we have to remove it from lines lst or groups?? idk
+             (distributed-intervals (calfw-blocks--interval-distribute remaining-intervals truncated-lines-left-in-group))
              )
-        (print taken-intervals)
+        ;; (print distributed-intervals)
         ;; (print distributed-intervals)
         (dolist (x (cdr g))
           (when (not (member x added-indices))
             ;; (print (length (car (nthcdr x lines-lst))))
+            (when (and exceeded-cell-width
+                     (= (length distributed-intervals) 1))
+              (print distributed-intervals)
+              (let* ((x-vertical-pos (nth 1 (nth x lines-lst)))
+                (exceeded-indicator (list (propertize (format "+%dmore" lines-left-out) 'calfw-blocks-exceeded-indicator t)
+                                          (list (nth 0 x-vertical-pos)
+                                                (max 4 (nth 1 x-vertical-pos)))
+                                          (pop distributed-intervals))))
+                (push exceeded-indicator new-lines-lst)
+                ))
+            (if (= 0 (length distributed-intervals))
+                (push x added-indices)
             (let* ((new-line (append (nth x lines-lst) (list (pop distributed-intervals)))))
               (push new-line new-lines-lst)
               ;; (setq added-indices '(1 2))
               ;; (print added-indices)
               (push x added-indices)
               )
-            ))
+            )))
         ))
     new-lines-lst
     ;; (print new-lines-lst)
@@ -753,7 +796,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
         (end-of-cell (= (cadr block-horizontal-pos) cell-width))
         (is-beginning-of-cell (= (car block-horizontal-pos) 0))
         (block-width-adjusted (if is-beginning-of-cell block-width (1- block-width)))
-        (rendered-block '()))
+        (rendered-block '())
+        (is-exceeded-indicator (get-text-property 0 'calfw-blocks-exceeded-indicator block-string)))
     (dolist (i (number-sequence 0 (- block-height 1)))
       (push (list (+ (car block-vertical-pos) i)
                   (propertize (concat
@@ -762,7 +806,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
                                ;; (when (not end-of-cell) "|")
                                )
                               'face
-                              face
+                              (if is-exceeded-indicator (list face 'italic)
+                              face)
                               ))
             rendered-block)
       )
@@ -836,7 +881,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
           (while (and split-blocks (= i (caar split-blocks)))
             (push (cadr (pop split-blocks)) current-line)
             )
-          (push (string-join (reverse current-line) "") rendered-lines)
+          (push (string-join current-line "") rendered-lines)
           )
         )
       )
