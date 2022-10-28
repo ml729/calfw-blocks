@@ -92,7 +92,7 @@ VIEW is a symbol of the view type."
    ((eq 'two-weeks view)  'cfw:view-two-weeks)
    ((eq 'day       view)  'cfw:view-day)
    ((eq 'block-week       view)  'calfw-blocks-view-block-week)
-   ((eq 'block-day       view)  'calfw-blocks-view-block-day)
+   ((eq 'block-day2       view)  'calfw-blocks-view-block-day)
    (t (error "Not found such view : %s" view))))
 
 (defun calfw-blocks-view-block-week-model (model)
@@ -103,6 +103,61 @@ not know how to display the contents in the destinations."
          (begin-date (cfw:week-begin-date init-date))
          (end-date (cfw:week-end-date init-date)))
     (cfw:view-model-make-common-data-for-weeks model begin-date end-date)))
+
+(defun calfw-blocks-view-block-nday-week-model (n model)
+  "[internal] Create a logical view model of weekly calendar.
+This function collects and arranges contents.  This function does
+not know how to display the contents in the destinations."
+  (let* ((init-date (cfw:k 'init-date model))
+         (begin-date init-date)
+         (end-date (cfw:date-after init-date (1- n))))
+    (print end-date)
+    (calfw-blocks-view-model-make-common-data-for-nday-weeks n model begin-date end-date)))
+
+
+
+
+(defun calfw-blocks-view-model-make-common-data-for-nday-weeks (n model begin-date end-date)
+  "[internal] Return a model object for week based views."
+  (cfw:model-create-updated-view-data
+   model
+   (cfw:view-model-make-common-data
+    model begin-date end-date
+    `((headers . ,(calfw-blocks-view-model-make-day-names-for-nday-week n)) ; a list of the index of day-of-week
+      (weeks . ,(calfw-blocks-view-model-make-nday-weeks ; a matrix of day-of-month, which corresponds to the index of `headers'
+                 n
+                 begin-date
+                 end-date))))))
+
+(defun calfw-blocks-view-model-make-day-names-for-nday-week (n)
+  "[internal] Return a list of index of day of the week."
+  (loop for i from 0 below n
+        collect (% (+ calendar-week-start-day i) cfw:week-days)))
+
+
+(defun calfw-blocks-view-model-make-nday-weeks (n begin-date end-date)
+  "[internal] Return a list of weeks those have 7 days."
+  (let* ((first-day-day (calendar-day-of-week begin-date)) weeks)
+    (loop with i = begin-date
+          with day = first-day-day
+          with week = nil
+          do
+          ;; todo handle n=1
+          ;; flush a week
+          (when (and (= 0 (mod (- day first-day-day) n)) week)
+            (push (nreverse week) weeks)
+            (setq week nil)
+            (when (cfw:date-less-equal-p end-date i) (return)))
+          ;; add a day
+          (push i week)
+          ;; increment
+          (setq day (% (1+ day) n))
+          (setq i (cfw:date-after i 1)))
+    (print begin-date)
+    (print end-date)
+    (nreverse weeks)))
+
+
 
 ;; (cfw:view-week-model (cfw:model-abstract-new (cfw:date 1 1 2011) nil nil))
 
@@ -144,6 +199,27 @@ return an alist of rendering parameters."
       (columns . ,cfw:week-days)
       (time-width . ,time-width)
       (time-hline . ,time-hline))))
+(defun calfw-blocks-view-nday-week-calc-param (n dest)
+  "[internal] Calculate cell size from the reference size and
+return an alist of rendering parameters."
+  (let*
+      ((time-width 5)
+       (time-hline (make-string time-width ? ))
+       (win-width (cfw:dest-width dest))
+       ;; title 2, toolbar 1, header 2, hline 2, footer 1, margin 2 => 10
+       (win-height (max 15 (- (cfw:dest-height dest) 10)))
+       (junctions-width (* (char-width cfw:fchar-junction) (1+ n)))
+       (cell-width  (cfw:round-cell-width
+                     (max 5 (/ (- win-width junctions-width time-width) n))))
+       ;; (cell-height (max 2 win-height))
+       (cell-height (* calfw-blocks-lines-per-hour 24))
+       (total-width (+ time-width (* cell-width n) junctions-width)))
+    `((cell-width . ,cell-width)
+      (cell-height . ,cell-height)
+      (total-width . ,total-width)
+      (columns . ,cfw:week-days)
+      (time-width . ,time-width)
+      (time-hline . ,time-hline))))
 
 ;; (defun calfw-blocks-view-block-week-model (model)
 ;;   "[internal] Create a logical view model of weekly calendar.
@@ -163,9 +239,13 @@ return an alist of rendering parameters."
 
 ;;     ))
 (defun calfw-blocks-view-block-day (component)
+  (calfw-blocks-view-block-nday-week 2 component)
+  )
+
+(defun calfw-blocks-view-block-nday-week (n component)
   "[internal] Render weekly calendar view."
   (let* ((dest (cfw:component-dest component))
-         (param (cfw:render-append-parts (calfw-blocks-view-week-calc-param dest)))
+         (param (cfw:render-append-parts (calfw-blocks-view-nday-week-calc-param n dest)))
          (total-width (cfw:k 'total-width param))
          (time-width (cfw:k 'time-width param))
          (EOL (cfw:k 'eol param))
@@ -173,7 +253,7 @@ return an alist of rendering parameters."
          (time-hline (cfw:k 'time-hline param))
          (hline (concat time-hline (cfw:k 'hline param)))
          (cline (concat time-hline (cfw:k 'cline param)))
-         (model (cfw:view-week-model (cfw:component-model component)))
+         (model (calfw-blocks-view-block-nday-week-model n (cfw:component-model component)))
          (begin-date (cfw:k 'begin-date model))
          (end-date (cfw:k 'end-date model)))
     ;; remove overlays for today's region
@@ -183,6 +263,7 @@ return an alist of rendering parameters."
     ;;         (push o new-ols)))
     ;;   )
 
+    (print model)
     ;; update model
     (setf (cfw:component-model component) model)
     ;; header
@@ -234,6 +315,7 @@ return an alist of rendering parameters."
     ;;         (push o new-ols)))
     ;;   )
 
+    (print model)
     ;; update model
     (setf (cfw:component-model component) model)
     ;; header
@@ -274,6 +356,8 @@ return an alist of rendering parameters."
 (defun calfw-blocks-render-calendar-cells-block-weeks (model param title-func)
   "[internal] Insert calendar cells for week based views."
   (loop for week in (cfw:k 'weeks model) do
+        ;; (setq week (list (nth 4 week)))
+        ;; (print week)
         (calfw-blocks-render-calendar-cells-days model param title-func week
                                                  'calfw-blocks-render-content
                                                  t)))
@@ -524,6 +608,8 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                 for date = (car day-rows)
                 for row = (nth i day-rows)
                 do
+                (if (get-text-property 0 'face row)
+                (print (get-text-property 0 'face row)))
                 (insert
                  (if (and calfw-blocks-show-time-grid
                           calfw-blocks-time-grid-lines-on-top
@@ -534,7 +620,8 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                    VL) ;;broken
                  (cfw:tp
                      (cfw:render-separator
-                      (cfw:render-left cell-width (and row (format "%s" row))))
+                      (cfw:render-left cell-width (and row (format "%s" row)))
+                      )
                      'cfw:date date)))
           (insert VL EOL))
     (insert cline)))
@@ -726,7 +813,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
             ;; (print (length (car (nthcdr x lines-lst))))
             (when (and exceeded-cell-width
                      (= (length distributed-intervals) 1))
-              (print distributed-intervals)
+              ;; (print distributed-intervals)
               (let* ((x-vertical-pos (nth 1 (nth x lines-lst)))
                 (exceeded-indicator (list (propertize (format "+%dmore" lines-left-out) 'calfw-blocks-exceeded-indicator t)
                                           (list (nth 0 x-vertical-pos)
@@ -811,6 +898,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
                               'calfw-blocks-horizontal-pos block-horizontal-pos
                               ))
             rendered-block)
+      ;; (print (get-text-property 0 'face (cadar rendered-block)))
       )
 ;; (push (list (+ (car block-vertical-pos) (- block-height 1))
 ;;                   (propertize (concat
@@ -833,8 +921,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
 
 ;; (calfw-blocks-split-single-block (car block-positions) 20)
 
-(setq calfw-blocks-block-faces
-      '(ffap isearch))
+;; (setq calfw-blocks-block-faces
+;;       '(ffap isearch))
 
 (defun calfw-blocks-zip-with-faces (blocks)
   (let ((blocks-with-faces '()))
@@ -893,7 +981,10 @@ Assume that all intervals in lst are disjoint and subsets of A."
   )
 
 (defun calfw-blocks--pad-block-line (block-line)
-  (let* ((padded-line '())
+  (let* ((block-line (seq-sort (lambda (a b) (< (car (get-text-property 0 'calfw-blocks-horizontal-pos a))
+                                (car (get-text-property 0 'calfw-blocks-horizontal-pos b))))
+                              block-line))
+         (padded-line '())
          (prev-end -1))
     (dolist (segment block-line (string-join (reverse padded-line) ""))
       (let* ((horizontal-pos (get-text-property 0 'calfw-blocks-horizontal-pos segment))
@@ -1131,6 +1222,20 @@ Assume that all intervals in lst are disjoint and subsets of A."
     )
    :view 'block-week)
   )
+
+(defun my-open-calendar2 ()
+  (interactive)
+  (cfw:open-calendar-buffer
+   :contents-sources
+   (list
+    (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
+    )
+   :view 'block-day2)
+  )
+
+
+
+
 (require 'calfw)
 (defmacro cfw:dest-with-region (dest &rest body)
     (let (($dest (gensym)))
