@@ -92,7 +92,10 @@ VIEW is a symbol of the view type."
    ((eq 'two-weeks view)  'cfw:view-two-weeks)
    ((eq 'day       view)  'cfw:view-day)
    ((eq 'block-week       view)  'calfw-blocks-view-block-week)
-   ((eq 'block-day2       view)  'calfw-blocks-view-block-day)
+   ((eq 'block-day       view)  'calfw-blocks-view-block-day)
+   ((eq 'block-2-day       view)  'calfw-blocks-view-block-2-day)
+   ((eq 'block-3-day       view)  'calfw-blocks-view-block-3-day)
+   ((eq 'block-4-day       view)  'calfw-blocks-view-block-4-day)
    (t (error "Not found such view : %s" view))))
 
 (defun calfw-blocks-view-block-week-model (model)
@@ -109,12 +112,10 @@ not know how to display the contents in the destinations."
 This function collects and arranges contents.  This function does
 not know how to display the contents in the destinations."
   (let* ((init-date (cfw:k 'init-date model))
-         (begin-date init-date)
-         (end-date (cfw:date-after init-date (1- n))))
-    (print end-date)
+         (begin-date (cfw:date-before init-date
+                     (mod (cfw:days-diff (cfw:emacs-to-calendar (current-time)) init-date) n)))
+         (end-date (cfw:date-after begin-date (1- n))))
     (calfw-blocks-view-model-make-common-data-for-nday-weeks n model begin-date end-date)))
-
-
 
 
 (defun calfw-blocks-view-model-make-common-data-for-nday-weeks (n model begin-date end-date)
@@ -123,17 +124,18 @@ not know how to display the contents in the destinations."
    model
    (cfw:view-model-make-common-data
     model begin-date end-date
-    `((headers . ,(calfw-blocks-view-model-make-day-names-for-nday-week n)) ; a list of the index of day-of-week
+    `((headers . ,(calfw-blocks-view-model-make-day-names-for-nday-week n begin-date)) ; a list of the index of day-of-week
       (weeks . ,(calfw-blocks-view-model-make-nday-weeks ; a matrix of day-of-month, which corresponds to the index of `headers'
                  n
                  begin-date
                  end-date))))))
 
-(defun calfw-blocks-view-model-make-day-names-for-nday-week (n)
+(defun calfw-blocks-view-model-make-day-names-for-nday-week (n begin-date)
   "[internal] Return a list of index of day of the week."
+  (let ((begin-day (calendar-day-of-week begin-date)))
   (loop for i from 0 below n
-        collect (% (+ calendar-week-start-day i) cfw:week-days)))
-
+        collect (% (+ begin-day i) cfw:week-days))))
+;;todo replace calendar week start day with day of the week of init date
 
 (defun calfw-blocks-view-model-make-nday-weeks (n begin-date end-date)
   "[internal] Return a list of weeks those have 7 days."
@@ -153,8 +155,6 @@ not know how to display the contents in the destinations."
           ;; increment
           (setq day (% (1+ day) n))
           (setq i (cfw:date-after i 1)))
-    (print begin-date)
-    (print end-date)
     (nreverse weeks)))
 
 
@@ -217,7 +217,7 @@ return an alist of rendering parameters."
     `((cell-width . ,cell-width)
       (cell-height . ,cell-height)
       (total-width . ,total-width)
-      (columns . ,cfw:week-days)
+      (columns . ,n)
       (time-width . ,time-width)
       (time-hline . ,time-hline))))
 
@@ -239,8 +239,25 @@ return an alist of rendering parameters."
 
 ;;     ))
 (defun calfw-blocks-view-block-day (component)
+  (calfw-blocks-view-block-nday-week 1 component)
+  )
+
+(defun calfw-blocks-view-block-2-day (component)
   (calfw-blocks-view-block-nday-week 2 component)
   )
+(defun calfw-blocks-view-block-3-day (component)
+  (calfw-blocks-view-block-nday-week 3 component)
+  )
+
+(defun calfw-blocks-view-block-4-day (component)
+  (calfw-blocks-view-block-nday-week 4 component)
+  )
+
+(defun calfw-blocks-view-block-7-day (component)
+  (calfw-blocks-view-block-nday-week 7 component)
+  )
+
+
 
 (defun calfw-blocks-view-block-nday-week (n component)
   "[internal] Render weekly calendar view."
@@ -263,7 +280,7 @@ return an alist of rendering parameters."
     ;;         (push o new-ols)))
     ;;   )
 
-    (print model)
+    ;; (print model)
     ;; update model
     (setf (cfw:component-model component) model)
     ;; header
@@ -271,16 +288,15 @@ return an alist of rendering parameters."
      (cfw:rt
       (cfw:render-title-period begin-date end-date)
       'cfw:face-title)
-     EOL (cfw:render-toolbar total-width 'week
-                             'cfw:navi-previous-week-command
-                             'cfw:navi-next-week-command)
+     EOL (calfw-blocks-render-toolbar total-width 'week
+                             (calfw-blocks-navi-previous-nday-week-command n)
+                             (calfw-blocks-navi-next-nday-week-command n))
      EOL hline)
     ;; time header
-    ;; (insert cline)
     (insert (cfw:rt (cfw:render-right time-width "Time")
                            'default))
     ;; day names
-    (cfw:render-day-of-week-names model param)
+    (calfw-blocks-render-day-of-week-names model param)
     (insert VL EOL cline)
     ;; contents
     (calfw-blocks-render-calendar-cells-block-weeks
@@ -292,6 +308,62 @@ return an alist of rendering parameters."
                   week-day 'cfw:face-default-day)))))
     ;; footer
     (insert (cfw:render-footer total-width (cfw:model-get-contents-sources model)))))
+
+(defun calfw-blocks-navi-next-nday-week-command (n)
+  "Move the cursor forward NUM weeks. If NUM is nil, 1 is used.
+Moves backward if NUM is negative."
+  (lambda (&optional num)
+  (interactive "p")
+  (cfw:navi-next-day-command (* n (or num 1)))))
+
+(defun calfw-blocks-navi-previous-nday-week-command (n)
+  "Move the cursor back NUM weeks. If NUM is nil, 1 is used.
+Moves forward if NUM is negative."
+  (lambda (&optional num)
+    (interactive "p")
+    (cfw:navi-next-day-command (* (- n) (or num 1)))))
+
+
+
+
+
+(defun calfw-blocks-render-day-of-week-names (model param)
+  "[internal] Insert week names."
+  (loop for i in (cfw:k 'headers model)
+        with VL = (cfw:k 'vl param) with cell-width = (cfw:k 'cell-width param)
+        for name = (aref calendar-day-name-array i) do
+        (insert VL (cfw:rt (cfw:render-center cell-width name)
+                           (cfw:render-get-week-face i 'cfw:face-header)))))
+(defun calfw-blocks-render-toolbar (width current-view prev-cmd next-cmd)
+  "[internal] Return a text of the toolbar.
+WIDTH is width of the toolbar.
+CURRENT-VIEW is a symbol of the current view type. This symbol is used to select the button faces on the toolbar.
+PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(next)-month-command' and `cfw:navi-previous(next)-week-command'."
+  (let* ((prev (cfw:render-button " < " prev-cmd))
+         (today (cfw:render-button "Today" 'cfw:navi-goto-today-command))
+         (next (cfw:render-button " > " next-cmd))
+         (month (cfw:render-button
+                 "Month" 'cfw:change-view-month
+                 (eq current-view 'month)))
+         (tweek (cfw:render-button
+                 "Two Weeks" 'cfw:change-view-two-weeks
+                 (eq current-view 'two-weeks)))
+         (week (cfw:render-button
+                "Week" 'calfw-blocks-change-view-block-week
+                (eq current-view 'block-week)))
+        (3day (cfw:render-button
+               "3-Day" 'calfw-blocks-change-view-block-3-day
+               (eq current-view 'block-3-day)))
+
+         (day (cfw:render-button
+               "Day" 'calfw-blocks-change-view-block-day
+               (eq current-view 'block-day)))
+         (sp  " ")
+         (toolbar-text
+          (cfw:render-add-right
+           width (concat sp prev sp next sp today sp)
+           (concat day sp 3day sp week sp tweek sp month sp))))
+    (cfw:render-default-content-face toolbar-text 'cfw:face-toolbar)))
 
 
 (defun calfw-blocks-view-block-week (component)
@@ -315,7 +387,6 @@ return an alist of rendering parameters."
     ;;         (push o new-ols)))
     ;;   )
 
-    (print model)
     ;; update model
     (setf (cfw:component-model component) model)
     ;; header
@@ -344,6 +415,10 @@ return an alist of rendering parameters."
                   week-day 'cfw:face-default-day)))))
     ;; footer
     (insert (cfw:render-footer total-width (cfw:model-get-contents-sources model)))))
+
+
+
+
 
 (defun calfw-blocks-change-view-block-week ()
   "change-view-week"
@@ -608,8 +683,6 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                 for date = (car day-rows)
                 for row = (nth i day-rows)
                 do
-                (if (get-text-property 0 'face row)
-                (print (get-text-property 0 'face row)))
                 (insert
                  (if (and calfw-blocks-show-time-grid
                           calfw-blocks-time-grid-lines-on-top
@@ -687,8 +760,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
              (num-intervals
               (if (not lst)
                   (- n (length intervals))
-                  (min (round (/ l-len avg-len))
-                                 (- n (length intervals)))))
+                (min (round (/ l-len avg-len))
+                     (- n (length intervals)))))
              (l-inner-len (/ l-len num-intervals)))
         ;; (print num-intervals)
         (dolist (i (number-sequence 0 (1- num-intervals)))
@@ -706,10 +779,9 @@ Assume that all intervals in lst are disjoint and subsets of A."
                 )
             (push (list start end) intervals)
             ))
-          )
+        )
       )
-(seq-sort (lambda (a b) (< (car a) (car b))) intervals)
-))
+    (seq-sort (lambda (a b) (< (car a) (car b))) intervals)))
 
 (defun calfw-blocks--get-intersection-groups (lines-lst)
   (let ((groups '())
@@ -1223,15 +1295,25 @@ Assume that all intervals in lst are disjoint and subsets of A."
    :view 'block-week)
   )
 
-(defun my-open-calendar2 ()
+(defun my-open-calendar-day ()
   (interactive)
   (cfw:open-calendar-buffer
    :contents-sources
    (list
     (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
     )
-   :view 'block-day2)
+   :view 'block-day)
   )
+(defun my-open-calendar-3day ()
+  (interactive)
+  (cfw:open-calendar-buffer
+   :contents-sources
+   (list
+    (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
+    )
+   :view 'block-3-day)
+  )
+
 
 
 
