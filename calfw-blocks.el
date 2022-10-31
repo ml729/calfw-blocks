@@ -17,6 +17,8 @@
 ;;
 ;;; Code:
 
+(require 'calfw)
+(require 'calfw-org)
 
 (defcustom calfw-blocks-earliest-visible-time '(8 0)
   "Earliest visible time as list (hours minutes)."
@@ -60,7 +62,10 @@ Also used for events with a start time and no end time."
 Modus Vivendi's colors for graphs."
   :group 'calfw-blocks
   :type 'list)
-
+(defface overline
+  '((t :overline t))
+    "Basic face for overline."
+  :group 'basic-faces)
 
 
 (defun calfw-blocks-create-faces ()
@@ -77,10 +82,6 @@ Modus Vivendi's colors for graphs."
 (defvar calfw-blocks-faces-list
   (calfw-blocks-create-faces)
   "")
-
-
-(defun calfw-blocks-view-week ()
-    "Render weekly block calendar view.")
 
 ;; why does the title %t already include the start time???
 (defun cfw:cp-dispatch-view-impl (view)
@@ -238,24 +239,20 @@ return an alist of rendering parameters."
 ;;                  (cfw:week-end-date   end-date))))))
 
 ;;     ))
+
 (defun calfw-blocks-view-block-day (component)
-  (calfw-blocks-view-block-nday-week 1 component)
-  )
+  (calfw-blocks-view-block-nday-week 1 component))
 
 (defun calfw-blocks-view-block-2-day (component)
-  (calfw-blocks-view-block-nday-week 2 component)
-  )
+  (calfw-blocks-view-block-nday-week 2 component))
 (defun calfw-blocks-view-block-3-day (component)
-  (calfw-blocks-view-block-nday-week 3 component)
-  )
+  (calfw-blocks-view-block-nday-week 3 component))
 
 (defun calfw-blocks-view-block-4-day (component)
-  (calfw-blocks-view-block-nday-week 4 component)
-  )
+  (calfw-blocks-view-block-nday-week 4 component))
 
 (defun calfw-blocks-view-block-7-day (component)
-  (calfw-blocks-view-block-nday-week 7 component)
-  )
+  (calfw-blocks-view-block-nday-week 7 component))
 
 
 
@@ -820,32 +817,6 @@ Assume that all intervals in lst are disjoint and subsets of A."
     )
   )
 
-;; (defun calfw-blocks--get-block-positions (lines cell-width)
-;;   (let* ((lines-lst (mapcar (lambda (x) (list x (calfw-blocks--get-block-vertical-position x))) lines))
-;;          (lines-pos (make-list (length lines-lst) nil))
-;;          (groups (calfw-blocks--get-intersection-groups lines-lst))
-;;          )
-;;     (if lines-lst (print (mapcar (lambda (x) (length x)) lines-lst)))
-;;     (dolist (g groups)
-;;       (let* (
-;;              (taken-intervals (seq-filter (lambda (x) (and (nth x lines-pos)
-;;                                                            (calfw-blocks--interval-intersect? (nth 1 (nth x lines-lst)) (car g))))
-;;                                           (number-sequence 0 (1- (length lines-lst)))))
-;;              (lines-left-in-group (- (length (cdr g)) (length taken-intervals)))
-;;              (remaining-intervals (calfw-blocks--interval-subtract-many `(0 ,cell-width) taken-intervals))
-;;              (distributed-intervals (calfw-blocks--interval-distribute remaining-intervals lines-left-in-group))
-;;              )
-;;         (dolist (x (cdr g))
-;;           (when (not (nth x lines-pos))
-;;             (let ((full-line  (pop distributed-intervals))
-;;                   (curr-line (nthcdr x lines-pos)))
-;;               (setcar (nthcdr x lines-pos) full-line)
-;;               ))
-;;             )
-;;         ))
-;;       ;; (if lines-lst (print lines-lst))
-;;       nil
-;;     ))
 
 (defun calfw-blocks--get-block-positions (lines cell-width)
   (let* ((lines-lst (mapcar (lambda (x) (list x (calfw-blocks--get-block-vertical-position x))) lines))
@@ -904,10 +875,6 @@ Assume that all intervals in lst are disjoint and subsets of A."
             )))
         ))
     new-lines-lst
-    ;; (print new-lines-lst)
-      ;; (if lines-lst (print lines-lst))
-      ;; (print new-lines-lst)
-      ;; (seq-sort (lambda (a b) ))
     ))
 
 
@@ -960,31 +927,18 @@ Assume that all intervals in lst are disjoint and subsets of A."
     (dolist (i (number-sequence 0 (- block-height 1)))
       (push (list (+ (car block-vertical-pos) i)
                   (propertize (concat
-                               (when (not is-beginning-of-cell) "|")
+                               (when (not is-beginning-of-cell) (if (= i 0) ">" "|"))
                                (calfw-blocks-generalized-substring block-string (* i block-width-adjusted) (* (1+ i) block-width-adjusted))
                                ;; (when (not end-of-cell) "|")
                                )
                               'face
-                              (if is-exceeded-indicator (list face 'italic)
-                              face)
+                              (seq-filter (lambda (x) x)
+                               (list face (if is-exceeded-indicator 'italic) (if (= i 0) 'overline)))
                               'calfw-blocks-horizontal-pos block-horizontal-pos
                               ))
             rendered-block)
       ;; (print (get-text-property 0 'face (cadar rendered-block)))
       )
-;; (push (list (+ (car block-vertical-pos) (- block-height 1))
-;;                   (propertize (concat
-;;                                (when (not is-beginning-of-cell) "|")
-;;                                (make-string block-width-adjusted ?_)
-;;                                ;; (when (not end-of-cell) "|")
-;;                                )
-;;                               'face
-;;                               face
-;;                               ))
-;;             rendered-block)
-    ;; (push (list (1- (cdr block-vertical-pos))
-    ;;             (propertize (concat (make-string block-width-adjusted ?-)
-    ;;                                 (when (not end-of-cell) "+")) 'face face)) rendered-block)
     (reverse rendered-block)))
 (setq block-positions `(("test1" (1 . 4) (0 . 20))
                             ("test2" (5 . 7) (0 . 20))
@@ -1069,186 +1023,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
         ))
     )
   )
-  ;; filter lines based on text property calfw-blocks-interval
-  ;; for those with start time, pad with spacing until it reaches the
-  ;; right height. need variable for number of lines per hour.
-  ;; then split the string
-
-  ;; (mapcan (lambda (line)
-  ;;           (let ((interval (get-text-property 0 'calfw-blocks-interval line)))
-  ;;             (if (and interval (car interval))
-  ;;                 (let* (
-  ;;                        (start (calfw--time-pair-to-decimal (car interval)))
-  ;;                        (end (calfw--time-pair-to-decimal (cdr interval)))
-  ;;                        (block-height (round (max 1 (* (- end start) 4))))
-  ;;                        )
-  ;;                   (cfw:render-line-breaker-simple (propertize (calfw--concat-preserve-property line
-  ;;                                                                                                "\n\n   \n")
-  ;;                                                               'face  'isearch)
-  ;;                                                   cell-width
-  ;;                                                   20)
-  ;;             )
-  ;;             (list line))))
-  ;;         lines))
-  ;; (and lines
-  ;;      (let ((num (/ cell-height (length lines))))
-  ;;        (cond
-  ;;         ((> 2 num) lines)
-  ;;         (t
-  ;;          (loop with total-rows = nil
-  ;;                for line in lines
-  ;;                for rows = (funcall cfw:render-line-breaker line cell-width num)
-  ;;                do
-  ;;                (when total-rows
-  ;;                  (cfw:render-add-item-separator-sign total-rows))
-  ;;                (setq total-rows (append total-rows rows))
-  ;;                finally return total-rows)))))
-
-;;; testing
-
-;; (defun cfw:render-columns (day-columns param)
-;;   "[internal] This function concatenates each rows on the days into a string of a physical line.
-;; DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (DAY-TITLE . ANNOTATION-TITLE) STRING STRING...)."
-;;   (setq test123 (nth 3 day-columns))
-;;   (let ((cell-width  (cfw:k 'cell-width  param))
-;;         (cell-height (cfw:k 'cell-height param))
-;;         (EOL (cfw:k 'eol param)) (VL (cfw:k 'vl param))
-;;         (hline (cfw:k 'hline param)) (cline (cfw:k 'cline param)))
-;;     ;; day title
-;;     ;; (print day-columns)
-;;     (loop for day-rows in day-columns
-;;           for date = (car day-rows)
-;;           for (tday . ant) = (cadr day-rows)
-;;           do
-;;           (insert
-;;            VL (if date
-;;                   (cfw:tp
-;;                    (cfw:render-default-content-face
-;;                     (cfw:render-add-right cell-width tday ant)
-;;                     'cfw:face-day-title)
-;;                    'cfw:date date)
-;;                 (cfw:render-left cell-width ""))))
-;;     (insert VL EOL)
-;;     ;; day contents
-;;     (loop with breaked-day-columns =
-;;           (loop for day-rows in day-columns
-;;                 for (date ants . lines) = day-rows
-;;                 collect
-;;                 (cons date (cfw:render-break-lines
-;;                             lines cell-width (1- cell-height))))
-;;           ;; do
-;;           ;; (setq test123 (nth 3 breaked-day-columns))
-;;           for i from 1 below cell-height do
-;;           (loop for day-rows in breaked-day-columns
-;;                 for date = (car day-rows)
-;;                 for row = (nth i day-rows)
-;;                 do
-;;                 (insert
-;;                  VL (propertize (cfw:tp
-;;                                  (cfw:render-separator
-;;                                   (cfw:render-left cell-width (and row (format "%s" row))))
-;;                                  'cfw:date date)
-;;                                 'face 'italic)))
-;;           (insert VL EOL))
-;;     (insert cline)))
 
 
-;; (setq cfw:render-line-breaker 'cfw:render-line-breaker-simple)
-
-;; (defun cfw:render-calendar-cells-days (model param title-func &optional
-;;                                              days content-fun do-weeks)
-;;   "[internal] Insert calendar cells for the linear views."
-;;   ;; (print (cfw: model))
-;;   (calfw-blocks-render-columns
-;;    (loop with cell-width      = (cfw:k 'cell-width param)
-;;          with days            = (or days (cfw:k 'days model))
-;;          with content-fun     = (or content-fun
-;;                                     'cfw:render-event-days-overview-content)
-;;          with holidays        = (cfw:k 'holidays model)
-;;          with annotations     = (cfw:k 'annotations model)
-;;          with headers         = (cfw:k 'headers  model)
-;;          with raw-periods-all = (cfw:render-periods-stacks model)
-;;          with sorter          = (cfw:model-get-sorter model)
-
-;;          for date in days ; days columns loop
-;;          for count from 0 below (length days)
-;;          for hday         = (car (cfw:contents-get date holidays))
-;;          for week-day     = (nth count headers)
-;;          for ant          = (cfw:rt (cfw:contents-get date annotations)
-;;                                     'cfw:face-annotation)
-;;          for raw-periods  = (cfw:contents-get date raw-periods-all)
-;;          do (setq test123 raw-periods)
-;;          for raw-contents = (cfw:render-sort-contents
-;;                              (funcall content-fun
-;;                                       (cfw:model-get-contents-by-date date model))
-;;                              sorter)
-;;          for prs-contents = (cfw:render-rows-prop
-;;                              (append (if do-weeks
-;;                                          (cfw:render-periods
-;;                                           date week-day raw-periods cell-width)
-;;                                        (cfw:render-periods-days
-;;                                         date raw-periods cell-width))
-;;                                      (mapcar 'cfw:render-default-content-face
-;;                                              raw-contents)))
-;;          for num-label = (if prs-contents
-;;                              (format "(%s)"
-;;                                      (+ (length raw-contents)
-;;                                         (length raw-periods))) "")
-;;          for tday = (concat
-;;                      " " ; margin
-;;                      (funcall title-func date week-day hday)
-;;                      (if num-label (concat " " num-label))
-;;                      (if hday (concat " " (cfw:rt (substring hday 0)
-;;                                                   'cfw:face-holiday))))
-;;          ;; do (if prs-contents (print prs-contents))
-;;          collect
-;;          (cons date (cons (cons tday ant) prs-contents)))
-;;    param))
-
-
-;; (defun cfw:render-calendar-cells-weeks (model param title-func)
-;;   "[internal] Insert calendar cells for week based views."
-;;   (loop for week in (cfw:k 'weeks model) do
-;;         (cfw:render-calendar-cells-days model param title-func week
-;;                                         'cfw:render-event-overview-content
-;;                                         t)))
-;; (defun cfw:render-map-event-content (lst event-fun)
-;;   "[internal] `lst' is a list of contents and `cfw:event's. Map over `lst',
-;; where `event-fun' is applied if the element is a `cfw:event'."
-;;   (if lst (print lst))
-;;   (mapcar #'(lambda (evt)
-;;               (if (cfw:event-p evt)
-;;                   (funcall event-fun evt)
-;;                 evt))
-;;           lst))
-
-;; (defun cfw:render-event-days-overview-content (lst)
-;;   "[internal] Apply `cfw:event-days-overview' on `cfw:event's in `lst'."
-;;   ;; (if lst (print lst))
-;;   (cfw:render-map-event-content lst 'cfw:event-days-overview))
-
-;; (defun cfw:render-event-overview-content (lst)
-;;   "[internal] Apply `cfw:event-overview' on `cfw:event's in `lst'."
-;;   ;; (if lst (print lst))
-;;   (cfw:render-map-event-content lst 'cfw:event-overview)
-;;   )
-
-;; (defun cfw:render-event-days-overview-content2 (lst)
-;;   "[internal] Apply `cfw:event-overview' on `cfw:event's in `lst'."
-;;   ;; (if lst (print lst))
-;;   ;; (print "hi")
-;;   (cfw:render-map-event-content lst 'cfw:event-overview2)
-;;   )
-
-
-;; (defun cfw:event-overview2 (event)
-;;   "Function that extracts the overview string from a`cfw:event'."
-;;   (cfw:event-format event "%s %e %t")
-;;   )
-
-;; (defun cfw:event-period-overview2 (event)
-;;   "Function that extracts the period overview string from a`cfw:event'."
-;;   (cfw:event-format event "%t"))
 
 ;; (defun cfw:event-format (event format-string)
 ;;   "Format the `cfw:event' `event' according to `format-string'.
@@ -1314,6 +1090,16 @@ Assume that all intervals in lst are disjoint and subsets of A."
    :view 'block-3-day)
   )
 
+(defun my-open-calendar-agenda ()
+  (interactive)
+  (cfw:open-calendar-buffer
+   :contents-sources
+   (list
+    (cfw:org-create-source "Red")
+    )
+   :view 'block-week)
+  )
+
 
 
 
@@ -1364,37 +1150,82 @@ Assume that all intervals in lst are disjoint and subsets of A."
       (cfw:dest-after-update dest)
       (cfw:cp-fire-update-hooks component))))
 
-;; (advice-remove 'cfw:dest-ol-today-set 'calfw-blocks-dest-ol-today-set)
 
-;; (defun cfw:render-periods-place (periods-each-days row period)
-;;   "[internal] Assign PERIOD content to the ROW-th row on the days of the period,
-;; and append the result to periods-each-days."
-;;   (loop for d in (cfw:enumerate-days (car period) (cadr period))
-;;         for periods-stack = (cfw:contents-get-internal d periods-each-days)
-;;         if periods-stack
-;;         do (setcdr periods-stack (append (cdr periods-stack)
-;;                                          (list (list row period))))
-;;         else
-;;         do (push (cons d (list (list row period))) periods-each-days))
-;;   periods-each-days)
 
-;; (defun cfw:render-periods-stacks (model)
-;;   "[internal] Arrange the `periods' records of the model and
-;; create period-stacks on the each days.
-;; period-stack -> ((row-num . period) ... )"
-;;   (let* (periods-each-days)
-;;     (loop for (begin end event) in (cfw:k 'periods model) ;;begin, end are dates e.g. (7 6 2022)
-;;           for content = (if (cfw:event-p event)
-;;                             (cfw:event-period-overview2 event)
-;;                           event)
-;;           for period = (list begin end content
-;;                              (cfw:extract-text-props content 'face))
-;;           for row = (cfw:render-periods-get-min periods-each-days begin end)
-;;           do
-;;           (setq periods-each-days (cfw:render-periods-place
-;;                                    periods-each-days row period)))
-;;     periods-each-days))
 
+(defun calfw-blocks-org-summary-format (item)
+  "Version of cfw:org-summary-format that adds time data needed to draw blocks."
+  (let* ((time (cfw:org-tp item 'time))
+         (time-of-day (cfw:org-tp item 'time-of-day))
+         (start-time (if time-of-day (list (/ time-of-day 100) (mod time-of-day 100))))
+         (duration (cfw:org-tp item 'duration))
+         (end-time (if (and start-time duration) (list (+ (nth 0 start-time) (/ duration 60))
+                                                      (+ (nth 1 start-time) (mod duration 60)))
+                     start-time))
+         (date (cfw:org-tp item 'date))
+         (time-str (and time-of-day
+                        (format "%02i:%02i " (/ time-of-day 100) (% time-of-day 100))))
+         (category (cfw:org-tp item 'org-category))
+         (tags (cfw:org-tp item 'tags))
+         (marker (cfw:org-tp item 'org-marker))
+         (buffer (and marker (marker-buffer marker)))
+         (text (cfw:org-extract-summary item))
+         (props (cfw:extract-text-props item 'face 'keymap))
+         (extra (cfw:org-tp item 'extra)))
+    (setq text (substring-no-properties text))
+    (when (string-match (concat "^" org-deadline-string ".*") extra)
+      (add-text-properties 0 (length text) (list 'face (org-agenda-deadline-face 1.0)) text))
+    (if org-todo-keywords-for-agenda
+      (when (string-match (concat "^[\t ]*\\<\\(" (mapconcat 'identity org-todo-keywords-for-agenda "\\|") "\\)\\>") text)
+        (add-text-properties (match-beginning 1) (match-end 1) (list 'face (org-get-todo-face (match-string 1 text))) text)))
+    ;;; ------------------------------------------------------------------------
+    ;;; act for org link
+    ;;; ------------------------------------------------------------------------
+    (setq text (replace-regexp-in-string "%[0-9A-F]\\{2\\}" " " text))
+    (if (string-match org-bracket-link-regexp text)
+      (let* ((desc (if (match-end 3) (org-match-string-no-properties 3 text)))
+             (link (org-link-unescape (org-match-string-no-properties 1 text)))
+             (help (concat "LINK: " link))
+             (link-props (list
+                          'face 'org-link
+                          'mouse-face 'highlight
+                          'help-echo help
+                          'org-link link)))
+        (if desc
+            (progn
+              (setq desc (apply 'propertize desc link-props))
+              (setq text (replace-match desc nil nil text)))
+          (setq link (apply 'propertize link link-props))
+          (setq text (replace-match link nil nil text)))))
+    (when time-str
+      (setq text (concat time-str text)))
+    (propertize
+     (apply 'propertize text props)
+     ;; include org filename
+     ;; (and buffer (concat " " (buffer-name buffer)))
+     'keymap cfw:org-text-keymap
+     ;; Delete the display property, since displaying images will break our
+     ;; table layout.
+     'display nil
+     'calfw-blocks-interval (if start-time (cons start-time end-time))
+     )
+;; (make-cfw:event
+;;      :start-date  date
+;;      :start-time  start-time
+;;      :end-date    date
+;;      :end-time    end-time
+;;      :title       (propertize
+;;                    (apply 'propertize text props)
+;;                    ;; include org filename
+;;                    ;; (and buffer (concat " " (buffer-name buffer)))
+;;                    'keymap cfw:org-text-keymap
+;;                    ;; Delete the display property, since displaying images will break our
+;;                    ;; table layout.
+;;                    'display nil)
+;;      :location    nil
+;;      :description nil)
+    ))
+(setq cfw:org-schedule-summary-transformer 'calfw-blocks-org-summary-format)
 
 ;; cfw:org-create-file-source
 (provide 'calfw-blocks)
