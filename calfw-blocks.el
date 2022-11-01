@@ -251,7 +251,7 @@ return an alist of rendering parameters."
 (defun calfw-blocks-view-block-4-day (component)
   (calfw-blocks-view-block-nday-week 4 component))
 
-(defun calfw-blocks-view-block-7-day (component)
+(defun calfw-blocks-view-block-week (component)
   (calfw-blocks-view-block-nday-week 7 component))
 
 
@@ -320,10 +320,6 @@ Moves forward if NUM is negative."
     (interactive "p")
     (cfw:navi-next-day-command (* (- n) (or num 1)))))
 
-
-
-
-
 (defun calfw-blocks-render-day-of-week-names (model param)
   "[internal] Insert week names."
   (loop for i in (cfw:k 'headers model)
@@ -331,6 +327,7 @@ Moves forward if NUM is negative."
         for name = (aref calendar-day-name-array i) do
         (insert VL (cfw:rt (cfw:render-center cell-width name)
                            (cfw:render-get-week-face i 'cfw:face-header)))))
+
 (defun calfw-blocks-render-toolbar (width current-view prev-cmd next-cmd)
   "[internal] Return a text of the toolbar.
 WIDTH is width of the toolbar.
@@ -348,10 +345,9 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
          (week (cfw:render-button
                 "Week" 'calfw-blocks-change-view-block-week
                 (eq current-view 'block-week)))
-        (3day (cfw:render-button
-               "3-Day" 'calfw-blocks-change-view-block-3-day
-               (eq current-view 'block-3-day)))
-
+         (3day (cfw:render-button
+                "3-Day" 'calfw-blocks-change-view-block-3-day
+                (eq current-view 'block-3-day)))
          (day (cfw:render-button
                "Day" 'calfw-blocks-change-view-block-day
                (eq current-view 'block-day)))
@@ -363,55 +359,55 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
     (cfw:render-default-content-face toolbar-text 'cfw:face-toolbar)))
 
 
-(defun calfw-blocks-view-block-week (component)
-  "[internal] Render weekly calendar view."
-  (let* ((dest (cfw:component-dest component))
-         (param (cfw:render-append-parts (calfw-blocks-view-week-calc-param dest)))
-         (total-width (cfw:k 'total-width param))
-         (time-width (cfw:k 'time-width param))
-         (EOL (cfw:k 'eol param))
-         (VL (cfw:k 'vl param))
-         (time-hline (cfw:k 'time-hline param))
-         (hline (concat time-hline (cfw:k 'hline param)))
-         (cline (concat time-hline (cfw:k 'cline param)))
-         (model (cfw:view-week-model (cfw:component-model component)))
-         (begin-date (cfw:k 'begin-date model))
-         (end-date (cfw:k 'end-date model)))
-    ;; remove overlays for today's region
-    ;; (let ((new-ols '()))
-    ;;   (dolist (o (cfw:dest-today-ol dest))
-    ;;     (if (eq (overlay-get o 'face) 'cfw:face-today-title)
-    ;;         (push o new-ols)))
-    ;;   )
+;; (defun calfw-blocks-view-block-week (component)
+;;   "[internal] Render weekly calendar view."
+;;   (let* ((dest (cfw:component-dest component))
+;;          (param (cfw:render-append-parts (calfw-blocks-view-week-calc-param dest)))
+;;          (total-width (cfw:k 'total-width param))
+;;          (time-width (cfw:k 'time-width param))
+;;          (EOL (cfw:k 'eol param))
+;;          (VL (cfw:k 'vl param))
+;;          (time-hline (cfw:k 'time-hline param))
+;;          (hline (concat time-hline (cfw:k 'hline param)))
+;;          (cline (concat time-hline (cfw:k 'cline param)))
+;;          (model (cfw:view-week-model (cfw:component-model component)))
+;;          (begin-date (cfw:k 'begin-date model))
+;;          (end-date (cfw:k 'end-date model)))
+;;     ;; remove overlays for today's region
+;;     ;; (let ((new-ols '()))
+;;     ;;   (dolist (o (cfw:dest-today-ol dest))
+;;     ;;     (if (eq (overlay-get o 'face) 'cfw:face-today-title)
+;;     ;;         (push o new-ols)))
+;;     ;;   )
 
-    ;; update model
-    (setf (cfw:component-model component) model)
-    ;; header
-    (insert
-     (cfw:rt
-      (cfw:render-title-period begin-date end-date)
-      'cfw:face-title)
-     EOL (cfw:render-toolbar total-width 'week
-                             'cfw:navi-previous-week-command
-                             'cfw:navi-next-week-command)
-     EOL hline)
-    ;; time header
-    ;; (insert cline)
-    (insert (cfw:rt (cfw:render-right time-width "Time")
-                           'default))
-    ;; day names
-    (cfw:render-day-of-week-names model param)
-    (insert VL EOL cline)
-    ;; contents
-    (calfw-blocks-render-calendar-cells-block-weeks
-     model param
-     (lambda (date week-day hday)
-       (cfw:rt (format "%s" (calendar-extract-day date))
-               (if hday 'cfw:face-sunday
-                 (cfw:render-get-week-face
-                  week-day 'cfw:face-default-day)))))
-    ;; footer
-    (insert (cfw:render-footer total-width (cfw:model-get-contents-sources model)))))
+;;     ;; update model
+;;     (setf (cfw:component-model component) model)
+;;     ;; header
+;;     (insert
+;;      (cfw:rt
+;;       (cfw:render-title-period begin-date end-date)
+;;       'cfw:face-title)
+;;      EOL (cfw:render-toolbar total-width 'week
+;;                              'cfw:navi-previous-week-command
+;;                              'cfw:navi-next-week-command)
+;;      EOL hline)
+;;     ;; time header
+;;     ;; (insert cline)
+;;     (insert (cfw:rt (cfw:render-right time-width "Time")
+;;                            'default))
+;;     ;; day names
+;;     (cfw:render-day-of-week-names model param)
+;;     (insert VL EOL cline)
+;;     ;; contents
+;;     (calfw-blocks-render-calendar-cells-block-weeks
+;;      model param
+;;      (lambda (date week-day hday)
+;;        (cfw:rt (format "%s" (calendar-extract-day date))
+;;                (if hday 'cfw:face-sunday
+;;                  (cfw:render-get-week-face
+;;                   week-day 'cfw:face-default-day)))))
+;;     ;; footer
+;;     (insert (cfw:render-footer total-width (cfw:model-get-contents-sources model)))))
 
 
 
@@ -533,8 +529,9 @@ period-stack -> ((row-num . period) ... )"
   "Return (start-time . end-time) of EVENT, a cfw:event struct.
 start-time and end-time are both lists '(a b) where a is the hour,
 b is the minute."
+  (when (cfw:event-start-time event)
   (cons (cfw:event-start-time event)
-        (cfw:event-end-time event)))
+        (cfw:event-end-time event))))
 
 (defun calfw-blocks-render-content (lst)
   "[internal] Apply `cfw:event-overview' on `cfw:event's in `lst'."
@@ -550,16 +547,61 @@ b is the minute."
 (defun calfw-blocks-render-periods (date week-day periods-stack cell-width)
   "[internal] This function translates PERIOD-STACK to display content on the DATE."
   (mapcar (lambda (p)
-            (let ((content (nth 2 (cadr p)))
+            (let* ((content (nth 2 (cadr p)))
                   (props (nth 3 (cadr p)))
                   (interval (nth 4 (cadr p))))
-              (propertize content
+          (if (or interval (cfw:org-tp content 'calfw-blocks-interval))
+              (apply 'propertize content
                           'face (cfw:render-get-face-period content 'cfw:face-periods)
                           'font-lock-face (cfw:render-get-face-period content 'cfw:face-periods)
                           'cfw:period t
-                          'calfw-blocks-interval interval)))
+                          'calfw-blocks-interval interval
+                          props)
+            (let* ((begin (nth 0 (cadr p)))
+                   (end (nth 1 (cadr p)))
+                   (beginp (equal date begin))
+                   (endp (equal date end))
+                   (width (- cell-width (if beginp 1 0) (if endp 1 0)))
+                   (title (calfw-blocks-render-periods-title
+                           date week-day begin end content cell-width)))
+              (apply 'propertize (concat (when beginp cfw:fstring-period-start)
+                                  (cfw:render-left width title ?-)
+                                  (when endp cfw:fstring-period-end))
+                          'face (cfw:render-get-face-period content 'cfw:face-periods)
+                          'font-lock-face (cfw:render-get-face-period content 'cfw:face-periods)
+                          'cfw:period t
+                          props))
+            )))
           (seq-sort (lambda (a b) (< (car a) (car b)))
                     periods-stack)))
+
+(defun calfw-blocks-render-periods-title (date week-day begin end content cell-width)
+  "[internal] Return a title string.
+Fix erroneous 'width' in last line, should be fixed upstream in calfw."
+  (let* ((week-begin (cfw:date-after date (- week-day)))
+         (month-begin (cfw:date
+                       (calendar-extract-month date)
+                       1 (calendar-extract-year date)))
+         (title-begin-abs
+          (max
+           (calendar-absolute-from-gregorian begin)
+           (calendar-absolute-from-gregorian week-begin)))
+         (title-begin (calendar-gregorian-from-absolute title-begin-abs))
+         (num (- (calendar-absolute-from-gregorian date) title-begin-abs)))
+    (when content
+      (loop with title = (substring content 0)
+            for i from 0 below num
+            for pdate = (calendar-gregorian-from-absolute (+ title-begin-abs i))
+            for chopn = (+ (if (equal begin pdate) 1 0) (if (equal end pdate) 1 0))
+            for del = (truncate-string-to-width title (- cell-width chopn))
+            do
+            (setq title (substring title (length del)))
+            finally return
+            (cfw:render-truncate title cell-width (equal end date))))))
+
+
+
+
 
 (defun calfw-blocks-format-time (t)
   (format "%02d:%02d" (car t) (cadr t)))
@@ -700,8 +742,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
   (let ((max-len (apply 'max (mapcar 'length columns)))
         (new-columns '()))
     (dolist (c columns (nreverse new-columns))
-      (push (append c (make-list (- max-len (length c)) "")) new-columns)
-    )))
+      (push (append c (make-list (- max-len (length c)) "")) new-columns))))
 
 (defun calfw-blocks--concat-preserve-property (propstr1 str2)
   (apply 'propertize (concat propstr1 str2)
@@ -734,8 +775,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
   (let* ((lst (seq-sort (lambda (x y) (< (car x) (car y))) lst))
         (endpoints (append (list (car a))
                           (cfw:flatten lst)
-                          (list (cadr a))
-                          ))
+                          (list (cadr a))))
         (intervals nil))
     (while endpoints
       (let ((start (pop endpoints))
@@ -762,8 +802,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
              (l-inner-len (/ l-len num-intervals)))
         ;; (print num-intervals)
         (dolist (i (number-sequence 0 (1- num-intervals)))
-          (let (
-                (start
+          (let ((start
                  (+ (car l)
                     (if (= i 0)
                         (floor (* i l-inner-len))
@@ -772,12 +811,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
                  (+ (car l)
                     (if (= i (1- num-intervals))
                         (ceiling (* (1+ i) l-inner-len))
-                      (round (* (1+ i) l-inner-len)))))
-                )
-            (push (list start end) intervals)
-            ))
-        )
-      )
+                      (round (* (1+ i) l-inner-len))))))
+            (push (list start end) intervals)))))
     (seq-sort (lambda (a b) (< (car a) (car b))) intervals)))
 
 (defun calfw-blocks--get-intersection-groups (lines-lst)
@@ -803,19 +838,15 @@ Assume that all intervals in lst are disjoint and subsets of A."
                     )))
         (if (not (and i-intersects-indices
                       (= 1 (length (cdr i-group)))))
-            (push i-group groups))
-        )
-      (push i prev-line-indices)
-      )
+            (push i-group groups)))
+      (push i prev-line-indices))
     (seq-sort (lambda (a b)
                 (let ((a-size (length (cdr a)))
                       (b-size (length (cdr b))))
                   (if (= a-size b-size)
                       (< (caar a) (caar b))
                     (> a-size b-size))))
-                 groups)
-    )
-  )
+                 groups)))
 
 
 (defun calfw-blocks--get-block-positions (lines cell-width)
@@ -862,20 +893,15 @@ Assume that all intervals in lst are disjoint and subsets of A."
                                           (list (nth 0 x-vertical-pos)
                                                 (max 4 (nth 1 x-vertical-pos)))
                                           (pop distributed-intervals))))
-                (push exceeded-indicator new-lines-lst)
-                ))
+                (push exceeded-indicator new-lines-lst)))
             (if (= 0 (length distributed-intervals))
                 (push x added-indices)
             (let* ((new-line (append (nth x lines-lst) (list (pop distributed-intervals)))))
               (push new-line new-lines-lst)
               ;; (setq added-indices '(1 2))
               ;; (print added-indices)
-              (push x added-indices)
-              )
-            )))
-        ))
-    new-lines-lst
-    ))
+              (push x added-indices)))))))
+    new-lines-lst))
 
 
 (defun calfw-blocks-round-start-time (time)
@@ -959,7 +985,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
     (reverse blocks-with-faces)))
 
 (defun calfw-blocks-render-all-day-events (lines cell-width cell-height)
-  (let ((all-day-lines (seq-filter (lambda (line) (not (car (get-text-property 0 'calfw-blocks-interval
+  (let ((all-day-lines (seq-filter (lambda (line)
+                                     (not (car (get-text-property 0 'calfw-blocks-interval
                                                                        line))))
                                      lines))
         (cfw:render-line-breaker 'cfw:render-line-breaker-simple))
@@ -994,17 +1021,11 @@ Assume that all intervals in lst are disjoint and subsets of A."
           (push (make-string cell-width ? ) rendered-lines))
         (let ((current-line '()))
           (while (and split-blocks (= i (caar split-blocks)))
-            (push (cadr (pop split-blocks)) current-line)
-            )
-          (push (calfw-blocks--pad-block-line current-line) rendered-lines)
-          )
-        )
-      )
+            (push (cadr (pop split-blocks)) current-line))
+          (push (calfw-blocks--pad-block-line current-line) rendered-lines))))
     ;; (append (reverse rendered-lines) (cfw:render-break-lines all-day-lines cell-width cell-height)
     ;;  )
-    (reverse rendered-lines)
-    )
-  )
+    (reverse rendered-lines)))
 
 (defun calfw-blocks--pad-block-line (block-line)
   (let* ((block-line (seq-sort (lambda (a b) (< (car (get-text-property 0 'calfw-blocks-horizontal-pos a))
@@ -1019,10 +1040,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
         (if (< prev-end (1- start))
             (push (make-string (- start prev-end 1) ? ) padded-line))
         (push segment padded-line)
-        (setq prev-end end)
-        ))
-    )
-  )
+        (setq prev-end end)))))
 
 
 
@@ -1058,8 +1076,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
    (list
     (cfw:org-create-file-source "Todos" "~/pensieve-beta/tasks/todos.org" "Green") ; orgmode source
     )
-   :view 'block-week)
-  )
+   :view 'block-week))
 
 (defun my-open-calendar ()
   (interactive)
@@ -1068,8 +1085,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
    (list
     (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
     )
-   :view 'block-week)
-  )
+   :view 'block-week))
 
 (defun my-open-calendar-day ()
   (interactive)
@@ -1078,8 +1094,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
    (list
     (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
     )
-   :view 'block-day)
-  )
+   :view 'block-day))
 (defun my-open-calendar-3day ()
   (interactive)
   (cfw:open-calendar-buffer
@@ -1087,8 +1102,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
    (list
     (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
     )
-   :view 'block-3-day)
-  )
+   :view 'block-3-day))
 
 (defun my-open-calendar-agenda ()
   (interactive)
@@ -1097,10 +1111,26 @@ Assume that all intervals in lst are disjoint and subsets of A."
    (list
     (cfw:org-create-source "Red")
     )
-   :view 'block-week)
-  )
+   :view 'block-week))
+(defun my-open-calendar-agenda2 ()
+  (interactive)
+  (cfw:open-calendar-buffer
+   :contents-sources
+   (list
+    (cfw:org-create-source "Red")
+    )
+   :view 'week))
 
 
+
+(defun my-open-calendar-agenda-day ()
+  (interactive)
+  (cfw:open-calendar-buffer
+   :contents-sources
+   (list
+    (cfw:org-create-source "Red")
+    )
+   :view 'block-day))
 
 
 
@@ -1150,8 +1180,88 @@ Assume that all intervals in lst are disjoint and subsets of A."
       (cfw:dest-after-update dest)
       (cfw:cp-fire-update-hooks component))))
 
+;; (defun cfw:org-schedule-period-to-calendar (begin end)
+;;   "[internal] Return calfw calendar items between BEGIN and END
+;; from the org schedule data."
+;;   ;; (mapcar (lambda (x) (print (cfw:org-tp x 'dotime)))
+;;   ;;         (cfw:org-collect-schedules-period begin end))
+;;   (let ((cfw:org-agenda-schedule-args '(:timestamp :scheduled)))
+;;   (loop
+;;    with cfw:org-todo-keywords-regexp = (regexp-opt org-todo-keywords-for-agenda) ; dynamic bind
+;;    with contents = nil with periods = nil
+;;    for i in (cfw:org-collect-schedules-period begin end)
+;;    for date = (cfw:org-tp i 'date)
+;;    for line = (funcall cfw:org-schedule-summary-transformer i)
+;;    for range = (cfw:org-get-timerange line)
+;;    if range do
+;;    (unless (member range periods)
+;;      (push range periods))
+;;    else do
+;;    ; dotime is not present if this event was already added as a timerange
+;;    (if (cfw:org-tp i 'dotime)
+;;        (setq contents (cfw:contents-add
+;; 		       (cfw:org-normalize-date date)
+;; 		       line contents)))
+;;    finally return (nconc contents (list (cons 'periods periods))))))
 
 
+;; (defun cfw:org-collect-schedules-period (begin end)
+;;   "[internal] Return org schedule items between BEGIN and END."
+;;   (let ((org-agenda-prefix-format " ")
+;;         (span 'day))
+;;     (setq org-agenda-buffer
+;;       (when (buffer-live-p org-agenda-buffer)
+;;         org-agenda-buffer))
+;;     (org-compile-prefix-format nil)
+;;     (loop for date in (cfw:enumerate-days begin end) append
+;;           (loop for file in (or cfw:org-icalendars (org-agenda-files nil 'ifmode))
+;;                 append
+;;                 (progn
+;;                   (org-check-agenda-file file)
+;;                   (apply 'org-agenda-get-day-entries
+;;                          file date
+;;                          cfw:org-agenda-schedule-args))))))
+
+
+(defun cfw:org-get-timerange (text)
+  "Return a range object (begin end text).
+If TEXT does not have a range, return nil."
+  (let* ((dotime (cfw:org-tp text 'dotime)))
+    (and (stringp dotime) (string-match org-ts-regexp dotime)
+	 (let ((date-string  (match-string 1 dotime))
+	       (extra (cfw:org-tp text 'extra)))
+	   (if (string-match "(\\([0-9]+\\)/\\([0-9]+\\)): " extra)
+	       (let* ((cur-day (string-to-number
+				(match-string 1 extra)))
+		      (total-days (string-to-number
+				   (match-string 2 extra)))
+		      (start-date (org-read-date nil t date-string))
+		      (end-date (time-add
+				 start-date
+				 (seconds-to-time (* 3600 24 (- total-days 1))))))
+		       ;; (unless (= cur-day total-days)
+             (list (calendar-gregorian-from-absolute (time-to-days start-date))
+		                  (calendar-gregorian-from-absolute (time-to-days end-date)) text)))
+	     ))))
+
+;; (defun cfw:org-get-timerange (text)
+;;   "Return a range object (begin end text).
+;; If TEXT does not have a range, return nil."
+;;   (let* ((dotime (cfw:org-tp text 'dotime)))
+;;     (and (stringp dotime) (string-match org-ts-regexp dotime)
+;; 	 (let* ((matches  (s-match-strings-all org-ts-regexp dotime))
+;;            (start-date (nth 1 (car matches)))
+;;            (end-date (nth 1 (nth 1 matches)))
+;; 	       (extra (cfw:org-tp text 'extra)))
+;; 	   (if (string-match "(\\([0-9]+\\)/\\([0-9]+\\)): " extra)
+;;        ( list( calendar-gregorian-from-absolute
+;;        (time-to-days
+;;        (org-read-date nil t start-date))
+;;        )
+;;        (calendar-gregorian-from-absolute
+;;        (time-to-days
+;;        (org-read-date nil t end-date))) text)
+;; 	   )))))
 
 (defun calfw-blocks-org-summary-format (item)
   "Version of cfw:org-summary-format that adds time data needed to draw blocks."
@@ -1207,8 +1317,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
      ;; Delete the display property, since displaying images will break our
      ;; table layout.
      'display nil
-     'calfw-blocks-interval (if start-time (cons start-time end-time))
-     )
+     'calfw-blocks-interval (if start-time (cons start-time end-time)))
 ;; (make-cfw:event
 ;;      :start-date  date
 ;;      :start-time  start-time
@@ -1226,6 +1335,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
 ;;      :description nil)
     ))
 (setq cfw:org-schedule-summary-transformer 'calfw-blocks-org-summary-format)
+
+
 
 ;; cfw:org-create-file-source
 (provide 'calfw-blocks)
