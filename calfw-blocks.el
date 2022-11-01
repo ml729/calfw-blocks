@@ -46,6 +46,11 @@ Also used for events with a start time and no end time."
   :group 'calfw-blocks
   :type 'boolean)
 
+(defcustom calfw-blocks-render-multiday-events t
+  "Whether to render (nonblock) multiday events."
+  :group 'calfw-blocks
+  :type 'boolean)
+
 (defcustom calfw-blocks-time-grid-lines-on-top t
   "Whether time grid lines should cut through vertical lines."
   :group 'calfw-blocks
@@ -82,6 +87,13 @@ Modus Vivendi's colors for graphs."
 (defvar calfw-blocks-faces-list
   (calfw-blocks-create-faces)
   "")
+
+(defvar calfw-blocks-nday-views-alist
+  '((1 . block-day)
+    (2 . block-2-day)
+    (3 . block-3-day)
+    (4 . block-4-day)
+    (5 . block-4-day)))
 
 ;; why does the title %t already include the start time???
 (defun cfw:cp-dispatch-view-impl (view)
@@ -346,10 +358,10 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
                 "Week" 'calfw-blocks-change-view-block-week
                 (eq current-view 'block-week)))
          (3day (cfw:render-button
-                "3-Day" 'calfw-blocks-change-view-block-3-day
+                "3-Day" (lambda  () (interactive) (calfw-blocks-change-view-block-nday 3))
                 (eq current-view 'block-3-day)))
          (day (cfw:render-button
-               "Day" 'calfw-blocks-change-view-block-day
+               "Day" (lambda () (interactive) (calfw-blocks-change-view-block-nday 1))
                (eq current-view 'block-day)))
          (sp  " ")
          (toolbar-text
@@ -410,6 +422,14 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
 ;;     (insert (cfw:render-footer total-width (cfw:model-get-contents-sources model)))))
 
 
+(defun calfw-blocks-change-view-block-nday (n)
+  ""
+  (interactive)
+  (when (cfw:cp-get-component)
+    (advice-add 'cfw:dest-ol-today-set :override 'calfw-blocks-dest-ol-today-set)
+    (cfw:cp-set-view (cfw:cp-get-component) (alist-get n calfw-blocks-nday-views-alist))
+    (advice-remove 'cfw:dest-ol-today-set 'calfw-blocks-dest-ol-today-set)))
+
 
 
 
@@ -458,7 +478,7 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
          for prs-contents = (cfw:render-rows-prop
                              (append (if do-weeks
                                          (calfw-blocks-render-periods
-                                          date week-day raw-periods cell-width)
+                                          date week-day raw-periods cell-width model)
                                        (calfw-blocks-render-periods-days
                                         date raw-periods cell-width))
                                      (mapcar 'cfw:render-default-content-face
@@ -544,13 +564,14 @@ b is the minute."
                 event))
           lst))
 
-(defun calfw-blocks-render-periods (date week-day periods-stack cell-width)
+(defun calfw-blocks-render-periods (date week-day periods-stack cell-width model)
   "[internal] This function translates PERIOD-STACK to display content on the DATE."
   (mapcar (lambda (p)
             (let* ((content (nth 2 (cadr p)))
                   (props (nth 3 (cadr p)))
                   (interval (nth 4 (cadr p))))
-          (if (or interval (cfw:org-tp content 'calfw-blocks-interval))
+          (if (or interval (cfw:org-tp content 'calfw-blocks-interval)
+                  (not calfw-blocks-render-multiday-events))
               (apply 'propertize content
                           'face (cfw:render-get-face-period content 'cfw:face-periods)
                           'font-lock-face (cfw:render-get-face-period content 'cfw:face-periods)
@@ -563,7 +584,7 @@ b is the minute."
                    (endp (equal date end))
                    (width (- cell-width (if beginp 1 0) (if endp 1 0)))
                    (title (calfw-blocks-render-periods-title
-                           date week-day begin end content cell-width)))
+                           date week-day begin end content cell-width model)))
               (apply 'propertize (concat (when beginp cfw:fstring-period-start)
                                   (cfw:render-left width title ?-)
                                   (when endp cfw:fstring-period-end))
@@ -575,17 +596,12 @@ b is the minute."
           (seq-sort (lambda (a b) (< (car a) (car b)))
                     periods-stack)))
 
-(defun calfw-blocks-render-periods-title (date week-day begin end content cell-width)
+(defun calfw-blocks-render-periods-title (date week-day begin end content cell-width model)
   "[internal] Return a title string.
 Fix erroneous 'width' in last line, should be fixed upstream in calfw."
-  (let* ((week-begin (cfw:date-after date (- week-day)))
-         (month-begin (cfw:date
-                       (calendar-extract-month date)
-                       1 (calendar-extract-year date)))
-         (title-begin-abs
-          (max
-           (calendar-absolute-from-gregorian begin)
-           (calendar-absolute-from-gregorian week-begin)))
+  (let* ((title-begin-abs
+          (max (calendar-absolute-from-gregorian begin)
+          (calendar-absolute-from-gregorian (cfw:k 'begin-date model))))
          (title-begin (calendar-gregorian-from-absolute title-begin-abs))
          (num (- (calendar-absolute-from-gregorian date) title-begin-abs)))
     (when content
@@ -597,7 +613,8 @@ Fix erroneous 'width' in last line, should be fixed upstream in calfw."
             do
             (setq title (substring title (length del)))
             finally return
-            (cfw:render-truncate title cell-width (equal end date))))))
+            (cfw:render-truncate title cell-width (equal end date))
+            ))))
 
 
 
