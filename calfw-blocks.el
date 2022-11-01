@@ -93,7 +93,9 @@ Modus Vivendi's colors for graphs."
     (2 . block-2-day)
     (3 . block-3-day)
     (4 . block-4-day)
-    (5 . block-4-day)))
+    (5 . block-5-day)
+    (10 . block-10-day)
+    ))
 
 ;; why does the title %t already include the start time???
 (defun cfw:cp-dispatch-view-impl (view)
@@ -467,6 +469,8 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
          for date in days ; days columns loop
          for count from 0 below (length days)
          for hday         = (car (cfw:contents-get date holidays))
+         for hday = (if (stringp hday) (list hday) hday)
+         for prs-hday = (if hday (mapcar (lambda (h) (cfw:rt h 'cfw:face-holiday)) hday))
          for week-day     = (nth count headers)
          for ant          = (cfw:rt (cfw:contents-get date annotations)
                                     'cfw:face-annotation)
@@ -476,13 +480,14 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
                                       (cfw:model-get-contents-by-date date model))
                              sorter)
          for prs-contents = (cfw:render-rows-prop
+                             (append hday
                              (append (if do-weeks
                                          (calfw-blocks-render-periods
                                           date week-day raw-periods cell-width model)
                                        (calfw-blocks-render-periods-days
                                         date raw-periods cell-width))
                                      (mapcar 'cfw:render-default-content-face
-                                             raw-contents)))
+                                             raw-contents))))
          for num-label = (if prs-contents
                              (format "(%s)"
                                      (+ (length raw-contents)
@@ -491,8 +496,9 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
                      " " ; margin
                      (funcall title-func date week-day hday)
                      (if num-label (concat " " num-label))
-                     (if hday (concat " " (cfw:rt (substring hday 0)
-                                                  'cfw:face-holiday))))
+                     ;; (if hday (concat " " (cfw:rt (substring hday 0)
+                     ;;                              'cfw:face-holiday)))
+                     )
          collect
          (cons date (cons (cons tday ant) prs-contents)))
    param))
@@ -1006,7 +1012,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
                                      (not (car (get-text-property 0 'calfw-blocks-interval
                                                                        line))))
                                      lines))
-        (cfw:render-line-breaker 'cfw:render-line-breaker-simple))
+        (cfw:render-line-breaker 'cfw:render-line-breaker-wordwrap))
         (cfw:render-break-lines all-day-lines cell-width cell-height)))
 
 (defun calfw-blocks-render-event-blocks (lines cell-width cell-height)
@@ -1126,9 +1132,13 @@ Assume that all intervals in lst are disjoint and subsets of A."
   (cfw:open-calendar-buffer
    :contents-sources
    (list
-    (cfw:org-create-source "Red")
+    (cfw:org-create-source "medium purple")
     )
    :view 'block-week))
+
+(map! "C-c o" 'my-open-calendar-agenda)
+
+
 (defun my-open-calendar-agenda2 ()
   (interactive)
   (cfw:open-calendar-buffer
@@ -1148,6 +1158,42 @@ Assume that all intervals in lst are disjoint and subsets of A."
     (cfw:org-create-source "Red")
     )
    :view 'block-day))
+
+
+
+;; (defun calfw-blocks-navi-next-item-command ()
+;;   "Move the cursor to the next item."
+;;   (interactive)
+;;   (let ((cp (cfw:cp-get-component))
+;;         (date (cfw:cursor-to-date))
+;;         (count (or (get-text-property (point) 'cfw:row-count) -1)))
+;;     (when (and cp date)
+;;       (let ((next (calfw-blocks-find-item (cfw:component-dest cp) date (1+ count))))
+;;         (if next (goto-char next)
+;;           (cfw:navi-goto-date date))))))
+
+;; (defun calfw-blocks-find-item (dest date row-count)
+;;   "[internal] Find the schedule item which has the text properties as
+;; `cfw:date' = DATE and `cfw:row-count' = ROW-COUNT. If no item is found,
+;; this function returns nil."
+;;   (loop with pos = (cfw:dest-point-min dest)
+;;         with end = (cfw:dest-point-max dest)
+;;         with last-found = nil
+;;         for next = (next-single-property-change pos 'cfw:date nil end)
+;;         for text-date = (and next (cfw:cursor-to-date next))
+;;         for text-row-count = (and next (get-text-property next 'cfw:row-count))
+;;         while (and next (< next end)) do
+;;         (when (and text-date (equal date text-date)
+;;                    (eql row-count text-row-count))
+;;           ;; this is needed item
+;;           (return next))
+;;         (when (and text-date (equal date text-date)
+;;                    text-row-count)
+;;           ;; keep it to search bottom item
+;;           (setq last-found next))
+;;         (setq pos next)
+;;         finally (if (and last-found (< row-count 0))
+;;                     (return last-found))))
 
 
 

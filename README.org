@@ -1,0 +1,63 @@
+* calfw-blocks.el
+
+Visual duration-based time blocks for the Emacs Calendar Framework (emacs-calfw).
+
+* Installation
+** Manual Installation
+Clone this git repo (e.g. to `~/.emacs.d/site-lisp/')
+#+begin_src
+cd ~/.emacs.d
+mkdir site-lisp
+cd site-lisp
+git clone https://github.com/ml729/calfw-blocks
+#+end_src
+
+And add its path to `'load-path':
+#+begin_src emacs lisp
+(add-to-list 'load-path "~/.emacs.d/site-lisp/calfw-blocks")
+#+end_src
+
+* Usage
+This package comes with the following new calfw views:
+#+begin_src
+'block-day
+'block-week
+'block-2-day
+'block-3-day
+'block-4-day
+'block-5-day
+#+end_src
+You can use these to define functions that directly open calfw with these views.
+Examples:
+#+begin_src emacs lisp
+;; Calendar showing org-agenda entries
+(defun my-open-calendar-agenda ()
+  (interactive)
+  (cfw:open-calendar-buffer
+   :contents-sources
+   (list
+    (cfw:org-create-source "medium purple"))
+   :view 'block-week))
+
+;; Calendar showing org entries from files
+(defun my-open-calendar-files ()
+  (interactive)
+  (cfw:open-calendar-buffer
+   :contents-sources
+   (list
+    (cfw:org-create-file-source "Todos" "~/stuff/todos.org" "green")
+    (cfw:org-create-file-source "Events" "~/stuff/events.org" "blue"))
+   :view 'block-3-day))
+#+end_src
+
+* Customization
+Notable customization options:
+- `calfw-blocks-earliest-visible-time': what time of day the calendar starts at.
+- `calfw-blocks-show-time-grid': shows a time grid if non-nil.
+- `calfw-blocks-default-event-length': the length in hours of events with a start time but no end time; used to determine the size of the rendered block.
+- `calfw-blocks-lines-per-hour': how many lines each hour gets.
+- `calfw-blocks-min-block-width': the smallest width a block can be in characters (includes divider character). If there are too many concurrent events, some events are hidden so that all blocks are at least `calfw-blocks-min-block-width' characters wide.
+
+
+* License
+GNU General Public License v3.0 (GPLv3)
