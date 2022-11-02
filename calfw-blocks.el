@@ -2,10 +2,9 @@
 ;;
 ;; Copyright (C) 2022 null
 ;;
-;; Author: null
-;; Maintainer: null <null>
+;; Author: ml729
+;; Maintainer: ml729 <null>
 ;; Created: July 06, 2022
-;; Modified: July 06, 2022
 ;; Version: 0.0.1
 ;; Package-Requires: ((emacs "24.3"))
 ;;
@@ -111,6 +110,7 @@ VIEW is a symbol of the view type."
    ((eq 'block-2-day       view)  'calfw-blocks-view-block-2-day)
    ((eq 'block-3-day       view)  'calfw-blocks-view-block-3-day)
    ((eq 'block-4-day       view)  'calfw-blocks-view-block-4-day)
+   ((eq 'block-7-day       view)  'calfw-blocks-view-block-7-day)
    (t (error "Not found such view : %s" view))))
 
 (defun calfw-blocks-view-block-week-model (model)
@@ -265,12 +265,19 @@ return an alist of rendering parameters."
 (defun calfw-blocks-view-block-4-day (component)
   (calfw-blocks-view-block-nday-week 4 component))
 
-(defun calfw-blocks-view-block-week (component)
+(defun calfw-blocks-view-block-5-day (component)
+  (calfw-blocks-view-block-nday-week 5 component))
+
+(defun calfw-blocks-view-block-7-day (component)
   (calfw-blocks-view-block-nday-week 7 component))
 
+(defun calfw-blocks-view-block-week (component)
+  (calfw-blocks-view-block-nday-week 7 component
+                                     (cfw:view-week-model (cfw:component-model component))))
 
 
-(defun calfw-blocks-view-block-nday-week (n component)
+
+(defun calfw-blocks-view-block-nday-week (n component &optional model)
   "[internal] Render weekly calendar view."
   (let* ((dest (cfw:component-dest component))
          (param (cfw:render-append-parts (calfw-blocks-view-nday-week-calc-param n dest)))
@@ -281,7 +288,7 @@ return an alist of rendering parameters."
          (time-hline (cfw:k 'time-hline param))
          (hline (concat time-hline (cfw:k 'hline param)))
          (cline (concat time-hline (cfw:k 'cline param)))
-         (model (calfw-blocks-view-block-nday-week-model n (cfw:component-model component)))
+         (model (if model model (calfw-blocks-view-block-nday-week-model n (cfw:component-model component))))
          (begin-date (cfw:k 'begin-date model))
          (end-date (cfw:k 'end-date model)))
     ;; remove overlays for today's region
@@ -373,6 +380,8 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
     (cfw:render-default-content-face toolbar-text 'cfw:face-toolbar)))
 
 
+(advice-add 'cfw:render-toolbar :override 'calfw-blocks-render-toolbar)
+
 ;; (defun calfw-blocks-view-block-week (component)
 ;;   "[internal] Render weekly calendar view."
 ;;   (let* ((dest (cfw:component-dest component))
@@ -434,14 +443,13 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
 
 
 
-
 (defun calfw-blocks-change-view-block-week ()
   "change-view-week"
   (interactive)
   (when (cfw:cp-get-component)
     (advice-add 'cfw:dest-ol-today-set :override 'calfw-blocks-dest-ol-today-set)
-    (cfw:cp-set-view (cfw:cp-get-component) 'block-week
-    (advice-remove 'cfw:dest-ol-today-set 'calfw-blocks-dest-ol-today-set))))
+    (cfw:cp-set-view (cfw:cp-get-component) 'block-week)
+    (advice-remove 'cfw:dest-ol-today-set 'calfw-blocks-dest-ol-today-set)))
 
 (defun calfw-blocks-render-calendar-cells-block-weeks (model param title-func)
   "[internal] Insert calendar cells for week based views."
@@ -469,8 +477,8 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
          for date in days ; days columns loop
          for count from 0 below (length days)
          for hday         = (car (cfw:contents-get date holidays))
-         for hday = (if (stringp hday) (list hday) hday)
-         for prs-hday = (if hday (mapcar (lambda (h) (cfw:rt h 'cfw:face-holiday)) hday))
+         ;; for hday = (if (stringp hday) (list hday) hday)
+         ;; for prs-hday = (if hday (mapcar (lambda (h) (cfw:rt h 'cfw:face-holiday)) hday))
          for week-day     = (nth count headers)
          for ant          = (cfw:rt (cfw:contents-get date annotations)
                                     'cfw:face-annotation)
@@ -480,14 +488,13 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
                                       (cfw:model-get-contents-by-date date model))
                              sorter)
          for prs-contents = (cfw:render-rows-prop
-                             (append hday
                              (append (if do-weeks
                                          (calfw-blocks-render-periods
                                           date week-day raw-periods cell-width model)
                                        (calfw-blocks-render-periods-days
                                         date raw-periods cell-width))
                                      (mapcar 'cfw:render-default-content-face
-                                             raw-contents))))
+                                             raw-contents)))
          for num-label = (if prs-contents
                              (format "(%s)"
                                      (+ (length raw-contents)
@@ -496,8 +503,8 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
                      " " ; margin
                      (funcall title-func date week-day hday)
                      (if num-label (concat " " num-label))
-                     ;; (if hday (concat " " (cfw:rt (substring hday 0)
-                     ;;                              'cfw:face-holiday)))
+                     (if hday (concat " " (cfw:rt (substring hday 0)
+                                                  'cfw:face-holiday)))
                      )
          collect
          (cons date (cons (cons tday ant) prs-contents)))

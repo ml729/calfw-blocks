@@ -1,6 +1,6 @@
 * calfw-blocks.el
 
-Visual duration-based time blocks for the Emacs Calendar Framework (emacs-calfw).
+Duration-based time blocks for the Emacs Calendar Framework (https://github.com/kiwanami/emacs-calfw).
 
 * Installation
 ** Manual Installation
