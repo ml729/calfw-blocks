@@ -889,12 +889,14 @@ Assume that all intervals in lst are disjoint and subsets of A."
     (dolist (g groups)
       (let* (
              (taken-intervals (seq-map (lambda (x) (nth 2 (cdr x)))
-                                       (seq-filter (lambda (x)  (and (member (car x) added-indices)
+                                       (seq-filter (lambda (x)
+                                                     (and (member (car x) added-indices)
                                                             (calfw-blocks--interval-intersect? (nth 1 (cdr x)) (car g))
                                                             )
                                                      )
                                           ;; (number-sequence 0 (1- (length lines-lst)))
-                                          (seq-map-indexed (lambda (elt idx) (cons idx elt)) new-lines-lst)
+                                          ;; (seq-map-indexed (lambda (elt idx) (cons idx elt)) new-lines-lst)
+                                          new-lines-lst
                                           )))
              (lines-left-in-group (- (length (cdr g)) (length taken-intervals)))
              (remaining-intervals (calfw-blocks--interval-subtract-many `(0 ,cell-width) taken-intervals))
@@ -910,8 +912,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
              ;; problem: if we remove an interval, do we have to remove it from lines lst or groups?? idk
              (distributed-intervals (calfw-blocks--interval-distribute remaining-intervals truncated-lines-left-in-group))
              )
-        ;; (print distributed-intervals)
-        ;; (print distributed-intervals)
+        ;; (print (mapconcat (lambda (x) (substring-no-properties (car x))) new-lines-lst " "))
+
         (dolist (x (cdr g))
           (when (not (member x added-indices))
             ;; (print (length (car (nthcdr x lines-lst))))
@@ -923,15 +925,15 @@ Assume that all intervals in lst are disjoint and subsets of A."
                                           (list (nth 0 x-vertical-pos)
                                                 (max 4 (nth 1 x-vertical-pos)))
                                           (pop distributed-intervals))))
-                (push exceeded-indicator new-lines-lst)))
+                (push (cons -1 exceeded-indicator) new-lines-lst)))
             (if (= 0 (length distributed-intervals))
                 (push x added-indices)
             (let* ((new-line (append (nth x lines-lst) (list (pop distributed-intervals)))))
-              (push new-line new-lines-lst)
+              (push (cons x new-line) new-lines-lst)
               ;; (setq added-indices '(1 2))
               ;; (print added-indices)
               (push x added-indices)))))))
-    new-lines-lst))
+    (mapcar 'cdr new-lines-lst)))
 
 
 (defun calfw-blocks-round-start-time (time)
