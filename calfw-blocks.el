@@ -1062,13 +1062,13 @@ Assume that all intervals in lst are disjoint and subsets of A."
                                 (car (get-text-property 0 'calfw-blocks-horizontal-pos b))))
                               block-line))
          (padded-line '())
-         (prev-end -1))
+         (prev-end 0))
     (dolist (segment block-line (string-join (reverse padded-line) ""))
       (let* ((horizontal-pos (get-text-property 0 'calfw-blocks-horizontal-pos segment))
             (start (car horizontal-pos))
             (end (cadr horizontal-pos)))
-        (if (< prev-end (1- start))
-            (push (make-string (- start prev-end 1) ? ) padded-line))
+        (if (< prev-end start)
+            (push (make-string (- start prev-end) ? ) padded-line))
         (push segment padded-line)
         (setq prev-end end)))))
 
@@ -1405,6 +1405,7 @@ If TEXT does not have a range, return nil."
 ;;      :description nil)
     ))
 (setq cfw:org-schedule-summary-transformer 'calfw-blocks-org-summary-format)
+
 
 
 
