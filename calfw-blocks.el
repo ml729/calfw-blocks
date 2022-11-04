@@ -55,6 +55,11 @@ Also used for events with a start time and no end time."
   :group 'calfw-blocks
   :type 'boolean)
 
+(defcustom calfw-blocks-grid-line-char (propertize " " 'face 'overline)
+  "Whether time grid lines should cut through vertical lines."
+  :group 'calfw-blocks
+  :type 'boolean)
+
 (defcustom calfw-blocks-colors-list
   '("#ef7969"
     "#49c029"
@@ -670,7 +675,8 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
     ;;        ;; (cfw:render-left cell-width "")
     ;;        )
     (insert time-hline)
-
+    ;; (print day-columns)
+  ;; (mapcar (lambda (x) (print (substring-no-properties (cddr x))))  day-columns)
     ;; convert to regular lisp style
     ;; (let ((breaked-date-columns
     ;;        (dolist (day-rows day-columns)
@@ -846,8 +852,14 @@ Assume that all intervals in lst are disjoint and subsets of A."
     (seq-sort (lambda (a b) (< (car a) (car b))) intervals)))
 
 (defun calfw-blocks--get-intersection-groups (lines-lst)
-  (let ((groups '())
+  (let*  (
+          ;; (lines-lst (seq-sort (lambda (x y) (<= (car (nth 1 x))
+          ;;                                       (car (nth 1 y))))
+          ;;                      lines-lst))
+         (groups '())
         (prev-line-indices '()))
+    ;; (print (length lines-lst2))
+    ;; (print (mapcar (lambda (x) (car (nth 1 x))) lines-lst))
     (dotimes (i (length lines-lst))
       (let* ((i-interval (nth 1 (nth i lines-lst)))
             (i-intersects-indices '())
@@ -858,12 +870,14 @@ Assume that all intervals in lst are disjoint and subsets of A."
           (when (and (calfw-blocks--interval-intersect? (car g) i-interval)
                      (not (member i (cdr g))))
             (dolist (elem (cdr g)) (push elem i-intersects-indices))
-            (setcdr g (reverse (cons i (cdr g))))))
+            (setcdr g (cons i (cdr g)))
+            (setcar g (calfw-blocks--interval-intersection (car g) i-interval))))
         (dolist (j prev-line-indices)
           (let ((j-interval (nth 1 (nth j lines-lst))))
             (when (and (not (member j i-intersects-indices))
                 (calfw-blocks--interval-intersect? i-interval j-interval))
-                    (setcdr i-group (reverse (cons j (cdr i-group))))
+                    (print (cons i-interval j-interval))
+                    (setcdr i-group (reverse (cons j (reverse (cdr i-group)))))
                     (setcar i-group (calfw-blocks--interval-intersection (car i-group) j-interval))
                     )))
         (if (not (and i-intersects-indices
@@ -880,16 +894,25 @@ Assume that all intervals in lst are disjoint and subsets of A."
 
 
 (defun calfw-blocks--get-block-positions (lines cell-width)
-  (let* ((lines-lst (mapcar (lambda (x) (list x (calfw-blocks--get-block-vertical-position x))) lines))
+  (let* ((lines-lst
+(seq-sort (lambda (x y) (>= (car (nth 1 x))
+                            (car (nth 1 y))))
+          (mapcar (lambda (x) (list x (calfw-blocks--get-block-vertical-position x))) lines)))
          (groups (calfw-blocks--get-intersection-groups lines-lst))
          (new-lines-lst nil)
          (added-indices nil)
          )
+    (print groups)
     ;; (if lines-lst (print (mapcar (lambda (x) (length x)) lines-lst)))
     (dolist (g groups)
       (let* (
              (taken-intervals (seq-map (lambda (x) (nth 2 (cdr x)))
                                        (seq-filter (lambda (x)
+                                                     ;; (if                                                      (and (member (car x) added-indices)
+                                                     ;;        (calfw-blocks--interval-intersect? (nth 1 (cdr x)) (car g))
+                                                     ;;        )
+
+                                                     ;; (print (cons (nth 1 (cdr x)) (car g))))
                                                      (and (member (car x) added-indices)
                                                             (calfw-blocks--interval-intersect? (nth 1 (cdr x)) (car g))
                                                             )
@@ -901,7 +924,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
              (lines-left-in-group (- (length (cdr g)) (length taken-intervals)))
              (remaining-intervals (calfw-blocks--interval-subtract-many `(0 ,cell-width) taken-intervals))
              (remaining-intervals-length (reduce '+ (mapcar (lambda (x) (- (cadr x) (car x))) remaining-intervals)))
-             (exceeded-cell-width (< (/ remaining-intervals-length lines-left-in-group) calfw-blocks-min-block-width))
+             (exceeded-cell-width (and (> lines-left-in-group 0)
+                                   (< (/ remaining-intervals-length lines-left-in-group) calfw-blocks-min-block-width)))
              (truncated-lines-left-in-group (if exceeded-cell-width (floor (/ remaining-intervals-length calfw-blocks-min-block-width))
                                               lines-left-in-group))
              (lines-left-out (- lines-left-in-group truncated-lines-left-in-group))
@@ -913,7 +937,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
              (distributed-intervals (calfw-blocks--interval-distribute remaining-intervals truncated-lines-left-in-group))
              )
         ;; (print (mapconcat (lambda (x) (substring-no-properties (car x))) new-lines-lst " "))
-
+        ;; (print lines)
         (dolist (x (cdr g))
           (when (not (member x added-indices))
             ;; (print (length (car (nthcdr x lines-lst))))
@@ -979,19 +1003,25 @@ Assume that all intervals in lst are disjoint and subsets of A."
         (block-height (- (cadr block-vertical-pos) (car block-vertical-pos)))
         (end-of-cell (= (cadr block-horizontal-pos) cell-width))
         (is-beginning-of-cell (= (car block-horizontal-pos) 0))
-        (block-width-adjusted (if is-beginning-of-cell block-width (1- block-width)))
+        (block-width-adjusted (if is-beginning-of-cell block-width (+ 0 block-width)))
         (rendered-block '())
         (is-exceeded-indicator (get-text-property 0 'calfw-blocks-exceeded-indicator block-string)))
     (dolist (i (number-sequence 0 (- block-height 1)))
       (push (list (+ (car block-vertical-pos) i)
                   (propertize (concat
-                               (when (not is-beginning-of-cell) (if (= i 0) ">" "|"))
-                               (calfw-blocks-generalized-substring block-string (* i block-width-adjusted) (* (1+ i) block-width-adjusted))
+                               ;; (when (not is-beginning-of-cell) "." );;(if (= i 0) "*" "|"))
+                               (if (= i 0) ">")
+                               (calfw-blocks-generalized-substring block-string (* i block-width-adjusted)
+                                                                   (- (* (1+ i) block-width-adjusted)
+                                                                      (if (= i 0) 1 0)))
                                ;; (when (not end-of-cell) "|")
+                               ;; (when (not end-of-cell) " " );;(if (= i 0) "*" "|"))
                                )
                               'face
                               (seq-filter (lambda (x) x)
-                               (list face (if is-exceeded-indicator 'italic) (if (= i 0) 'overline)))
+                               (list face (if is-exceeded-indicator 'italic)
+                                     (if (= i 0) 'overline)
+                                     ))
                               'calfw-blocks-horizontal-pos block-horizontal-pos
                               ))
             rendered-block)
@@ -1026,6 +1056,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
 
 (defun calfw-blocks-render-event-blocks (lines cell-width cell-height)
   ""
+  ;; (mapcar (lambda (x) (print (substring-no-properties x))) lines)
   (let* ((interval-lines (seq-filter (lambda (line) (car (get-text-property 0 'calfw-blocks-interval
                                                                        line)))
                                      lines))
@@ -1043,37 +1074,47 @@ Assume that all intervals in lst are disjoint and subsets of A."
                                   (calfw-blocks-zip-with-faces block-positions))))
          (rendered-lines '()))
     (dolist (i (number-sequence 0 (1- cell-height)))
-    ;; sort rendered blocks by car, iterate through lines starting at 0 going to cell height
-    ;; whenever there is an empty line, add spaces and new line
-    ;; concatenate anythings on the same line
-      (if (or (not split-blocks) (< i (caar split-blocks)))
-          (if (and calfw-blocks-show-time-grid
-                   (= (mod i calfw-blocks-lines-per-hour) 0))
-          (push (make-string cell-width ?-) rendered-lines)
+      ;; sort rendered blocks by car, iterate through lines starting at 0 going to cell height
+      ;; whenever there is an empty line, add spaces and new line
+      ;; concatenate anythings on the same line
+      (let ((make-time-grid-line (and calfw-blocks-show-time-grid
+                                      (= (mod i calfw-blocks-lines-per-hour) 0))))        (if (or (not split-blocks) (< i (caar split-blocks)))
+            (if make-time-grid-line
+            ;; (push (make-string cell-width ?-) rendered-lines)
+            (push (propertize (make-string cell-width ? ) 'face 'overline) rendered-lines)
           (push (make-string cell-width ? ) rendered-lines))
         (let ((current-line '()))
           (while (and split-blocks (= i (caar split-blocks)))
             (push (cadr (pop split-blocks)) current-line))
-          (push (calfw-blocks--pad-block-line current-line) rendered-lines))))
+          (push (calfw-blocks--pad-block-line current-line cell-width make-time-grid-line) rendered-lines)))))
     ;; (append (reverse rendered-lines) (cfw:render-break-lines all-day-lines cell-width cell-height)
     ;;  )
     (reverse rendered-lines)))
 
-(defun calfw-blocks--pad-block-line (block-line)
+(defun calfw-blocks--pad-block-line (block-line cell-width make-time-grid-line)
   (let* ((block-line (seq-sort (lambda (a b) (< (car (get-text-property 0 'calfw-blocks-horizontal-pos a))
                                 (car (get-text-property 0 'calfw-blocks-horizontal-pos b))))
                               block-line))
          (padded-line '())
          (prev-end 0))
-    (dolist (segment block-line (string-join (reverse padded-line) ""))
+    (dolist (segment block-line (progn
+                                  (if make-time-grid-line
+                                  (push (calfw-blocks--grid-line (- cell-width prev-end)) padded-line))
+                                  (string-join (reverse padded-line) "")))
       (let* ((horizontal-pos (get-text-property 0 'calfw-blocks-horizontal-pos segment))
             (start (car horizontal-pos))
             (end (cadr horizontal-pos)))
         (if (< prev-end start)
-            (push (make-string (- start prev-end) ? ) padded-line))
+            (push (if make-time-grid-line
+                      (calfw-blocks--grid-line n)
+                      (make-string (- start prev-end) ? ))
+                  padded-line))
         (push segment padded-line)
-        (setq prev-end end)))))
+        (setq prev-end end)
+        ))))
 
+(defun calfw-blocks--grid-line (n)
+  (propertize (make-string n ? ) 'face 'overline))
 
 
 ;; (defun cfw:event-format (event format-string)
@@ -1116,6 +1157,14 @@ Assume that all intervals in lst are disjoint and subsets of A."
    :contents-sources
    (list
     (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
+    )
+   :view 'block-week))
+(defun my-open-calendar-demo ()
+  (interactive)
+  (cfw:open-calendar-buffer
+   :contents-sources
+   (list
+    (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-demo.org" "Green") ; orgmode source
     )
    :view 'block-week))
 
@@ -1409,6 +1458,21 @@ If TEXT does not have a range, return nil."
 (setq cfw:org-schedule-summary-transformer 'calfw-blocks-org-summary-format)
 
 
+(defun cfw:org-to-calendar (file begin end)
+  (loop for event in (cfw:org-convert-org-to-calfw file)
+        if (and (listp event)
+                (equal 'periods (car event)))
+        collect
+        (cons
+         'periods
+         (loop for evt in (cadr event)
+               ;; for aaa = (print (substring-no-properties (cfw:event-title evt)))
+               if (and
+                   (cfw:date-less-equal-p begin (cfw:event-end-date evt))
+                   (cfw:date-less-equal-p (cfw:event-start-date evt) end))
+               collect evt))
+        else if (cfw:date-between begin end (cfw:event-start-date event))
+        collect event))
 
 
 ;; cfw:org-create-file-source
