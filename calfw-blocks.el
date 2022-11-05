@@ -91,8 +91,7 @@ Modus Vivendi's colors for graphs."
     (3 . block-3-day)
     (4 . block-4-day)
     (5 . block-5-day)
-    (10 . block-10-day)
-    ))
+    (10 . block-10-day)))
 
 (defvar calfw-blocks-posframe-buffer " *cfw-calendar-sticky*")
 
@@ -110,19 +109,18 @@ Modus Vivendi's colors for graphs."
 
 (defvar calfw-blocks-faces-list
   (calfw-blocks-create-faces)
-  "")
+  "Faces for blocks.")
 
 
 (defface calfw-blocks-today-indicator
   '((t (:background "#e0a3ff")))
-  "Face for positive messages."
+  "Face for today indicator."
   :group 'calfw-blocks)
 
 
 ;; Calendar model and params
 
-;; why does the title %t already include the start time???
-(defun cfw:cp-dispatch-view-impl (view)
+(defun calfw-blocks-cp-dispatch-view-impl (view)
   "[internal] Return a view function which is corresponding to the view symbol.
 VIEW is a symbol of the view type."
   (cond
@@ -138,6 +136,8 @@ VIEW is a symbol of the view type."
    ((eq 'block-7-day       view)  'calfw-blocks-view-block-7-day)
    (t (error "Not found such view : %s" view))))
 
+
+(advice-add 'cfw:cp-dispatch-view-impl :override 'calfw-blocks-cp-dispatch-view-impl)
 
 (defun calfw-blocks-view-block-nday-week-model (n model)
   "[internal] Create a logical view model of weekly calendar.
@@ -783,6 +783,14 @@ Assume that all intervals in lst are disjoint and subsets of A."
 ;; Calculate block sizes and positions
 
 (defun calfw-blocks--get-intersection-groups (lines-lst)
+  "Return a list of groups of overlapping events in LINES-LST.
+
+Each group is a cons pair of the form (intersection . indices).
+The first element is the intersection of all vertical position
+intervals of the events in the group, represented as a list
+containing the start and end of the interval. The second element
+is a list of indices (into the original list LINES-LST)
+corresponding to the elements of the group."
   (let* ((groups '())
          (prev-line-indices '()))
     (dotimes (i (length lines-lst))
@@ -817,6 +825,22 @@ Assume that all intervals in lst are disjoint and subsets of A."
 
 
 (defun calfw-blocks--get-block-positions (lines cell-width)
+  "Return LINES with assigned vertical and horizontal positions.
+
+Each element of the list is a list (event vertical-pos
+horizontal-pos). The vertical-pos and horizontal-pos are both
+half open intervals represented as two element lists, containing
+the start (inclusive) and the end (exclusive). The vertical-pos
+is in unit lines, the horizontal-pos is in unit characters. Both
+positions are given relative to the calendar cell the event
+resides in, which has width CELL-WIDTH.
+
+The vertical positions represent the time of day the event
+occurs. The horizontal positions are assigned to display
+concurrent events side by side. If there is not enough space for
+all blocks to have width at least `calfw-blocks-min-block-width'
+then some events are not displayed, and an indicator for how many
+events are not displayed is shown."
   (let* ((lines-lst
           (seq-sort (lambda (x y) (>= (car (nth 1 x))
                                       (car (nth 1 y))))
@@ -906,7 +930,17 @@ Assume that all intervals in lst are disjoint and subsets of A."
         (t (make-string (- end start) ? ))))
 
 (defun calfw-blocks-split-single-block (block cell-width face)
-  ;; does substring preserve properties?
+  "Split event BLOCK into lines of width CELL-WIDTH.
+
+BLOCK is expected to contain elements of the form (event
+vertical-pos horizontal-pos). Event is a string, vertical-pos and
+horizontal-pos are two element lists representing half open
+intervals. See `calfw-blocks--get-block-positions' for more
+details about vertical-pos and horizontal-pos. FACE is applied to
+all the resulting lines.
+
+An overline is added to the first line of an event block. A character
+is added at the beginning of a block to indicate it is the beginning."
   (let* ((block-string (car block))
         (block-vertical-pos (cadr block))
         (block-horizontal-pos (caddr block))
@@ -919,7 +953,8 @@ Assume that all intervals in lst are disjoint and subsets of A."
         (is-exceeded-indicator (get-text-property 0 'calfw-blocks-exceeded-indicator block-string)))
     (dolist (i (number-sequence 0 (- block-height 1)))
       (push (list (+ (car block-vertical-pos) i)
-                  (propertize (concat
+                  (propertize (concat ;;TODO some parts of the string won't inherit the properties of the event
+                               ;; might cause issues with org goto/navigation/etc?
                                ;; (when (not is-beginning-of-cell) "." );;(if (= i 0) "*" "|"))
                                (if (= i 0) ">")
                                (calfw-blocks-generalized-substring block-string (* i block-width-adjusted)
@@ -933,8 +968,7 @@ Assume that all intervals in lst are disjoint and subsets of A."
                                (list face (if is-exceeded-indicator 'italic)
                                      (if (= i 0) 'overline)
                                      ))
-                              'calfw-blocks-horizontal-pos block-horizontal-pos
-                              ))
+                              'calfw-blocks-horizontal-pos block-horizontal-pos))
             rendered-block))
     (reverse rendered-block)))
 
