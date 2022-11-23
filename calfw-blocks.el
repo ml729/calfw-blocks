@@ -95,6 +95,7 @@ Modus Vivendi's colors for graphs."
     (10 . block-10-day)))
 
 (defvar calfw-blocks-posframe-buffer " *cfw-calendar-sticky*")
+(defvar-local calfw-blocks-header-line-string nil)
 
 ;; Faces
 (defun calfw-blocks-create-faces ()
@@ -258,8 +259,20 @@ return an alist of rendering parameters."
     ;; (print model)
     ;; update model
     (setf (cfw:component-model component) model)
+    (setq calfw-blocks-header-line-string (concat
+                                           "  Time"
+                                           (loop for i in (cfw:k 'headers model)
+                                                 with VL = (cfw:k 'vl param) with cell-width = (cfw:k 'cell-width param)
+                                                 for name = (aref calendar-day-name-array i)
+                                                 concat
+                                                 (concat VL (cfw:rt (cfw:render-center cell-width name)
+                                                                    (cfw:render-get-week-face i 'cfw:face-header))))))
+    (setq header-line-format '((:eval
+                                (if (< (line-number-at-pos (window-start)) 6)
+                                    ""
+                                  calfw-blocks-header-line-string
+                                  ))))
 
-    (setq header-line-format (calfw-blocks-render-day-of-week-names model param))
     ;; (setq header-line-format "lmao")
     ;; (with-current-buffer (get-buffer-create calfw-blocks-posframe-buffer)
     ;;   (erase-buffer)
@@ -322,6 +335,7 @@ return an alist of rendering parameters."
     ;; (move-to-window-line 0)
 
     ))
+
 
 (defun calfw-blocks-navi-next-nday-week-command (n)
   "Move the cursor forward NUM weeks. If NUM is nil, 1 is used.
@@ -1160,6 +1174,7 @@ is added at the beginning of a block to indicate it is the beginning."
   (when (string-match-p "block" (symbol-name view))
     (scroll-up-line (floor (* calfw-blocks-lines-per-hour
                        (calfw-blocks--time-pair-to-float calfw-blocks-initial-visible-time)))))
+
     ;; (move-to-window-line 0)
     ;; (let ((posframe-mouse-banish-function (lambda (_))))
     ;; (posframe-show calfw-blocks-posframe-buffer
