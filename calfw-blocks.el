@@ -20,8 +20,8 @@
 (require 'calfw-org)
 (require 'posframe)
 
-(defcustom calfw-blocks-earliest-visible-time '(8 0)
-  "Earliest visible time as list (hours minutes)."
+(defcustom calfw-blocks-initial-visible-time '(8 0)
+  "Earliest initial visible time as list (hours minutes)."
   :group 'calfw-blocks
   :type 'list)
 
@@ -40,7 +40,6 @@ Also used for events with a start time and no end time."
   :group 'calfw-blocks
   :type 'number)
 
-(setq calfw-blocks-min-block-width 3)
 (defcustom calfw-blocks-show-time-grid t
   "Whether to show horizontal lines for each hour."
   :group 'calfw-blocks
@@ -84,6 +83,8 @@ Modus Vivendi's colors for graphs."
   :group 'basic-faces)
 
 
+(defvar calfw-blocks-earliest-visible-time '(0 0)
+  "Earliest visible time in a day as list (hours minutes).")
 
 (defvar calfw-blocks-nday-views-alist
   '((1 . block-day)
@@ -257,6 +258,9 @@ return an alist of rendering parameters."
     ;; (print model)
     ;; update model
     (setf (cfw:component-model component) model)
+
+    (setq header-line-format (calfw-blocks-render-day-of-week-names model param))
+    ;; (setq header-line-format "lmao")
     ;; (with-current-buffer (get-buffer-create calfw-blocks-posframe-buffer)
     ;;   (erase-buffer)
     ;;   (setq-local cfw:component component)
@@ -310,7 +314,14 @@ return an alist of rendering parameters."
                  (cfw:render-get-week-face
                   week-day 'cfw:face-default-day)))))
     ;; footer
-    (insert (cfw:render-footer total-width (cfw:model-get-contents-sources model)))))
+    (insert (cfw:render-footer total-width (cfw:model-get-contents-sources model)))
+
+    ;; scroll to initial visible time
+    ;; (forward-line (floor (* calfw-blocks-lines-per-hour
+    ;;                    (calfw-blocks--time-pair-to-float calfw-blocks-initial-visible-time))))
+    ;; (move-to-window-line 0)
+
+    ))
 
 (defun calfw-blocks-navi-next-nday-week-command (n)
   "Move the cursor forward NUM weeks. If NUM is nil, 1 is used.
@@ -369,10 +380,10 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
 (defun calfw-blocks-change-view-block-nday (n)
   ""
   (interactive)
-    ;; (posframe-delete calfw-blocks-posframe-buffer)
- ;; (set-buffer cfw:calendar-buffer-name)
- (if (string= (buffer-name) calfw-blocks-posframe-buffer)
-     (select-frame (frame-parent)))
+ ;;    (posframe-delete calfw-blocks-posframe-buffer)
+ ;; ;; (set-buffer cfw:calendar-buffer-name)
+ ;; (if (string= (buffer-name) calfw-blocks-posframe-buffer)
+ ;;     (select-frame (frame-parent)))
   (when (cfw:cp-get-component)
     (advice-add 'cfw:dest-ol-today-set :override 'calfw-blocks-dest-ol-today-set)
     (cfw:cp-set-view (cfw:cp-get-component) (alist-get n calfw-blocks-nday-views-alist))
@@ -591,7 +602,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
         (cline (concat time-hline (cfw:k 'cline param)))
         (earliest-date (caar day-columns))
         (curr-time-linum (calfw-blocks--current-time-vertical-position)))
-    (print curr-time-linum)
+    ;; (print curr-time-linum)
     ;; day title
     ;; (push day-columns)
     ;; (insert
@@ -1137,7 +1148,60 @@ is added at the beginning of a block to indicate it is the beginning."
       (cfw:cp-set-selected-date
        component (cfw:component-selected component))
       (cfw:dest-after-update dest)
-      (cfw:cp-fire-update-hooks component))))
+      (cfw:cp-fire-update-hooks component)
+        ;; (goto-line (+ (save-excursion (goto-char (window-end)) (string-to-number (format-mode-line "%l")))
+        ;;                (floor (* calfw-blocks-lines-per-hour
+        ;;                 (calfw-blocks--time-pair-to-float calfw-blocks-initial-visible-time)))))
+        ;; (move-to-window-line 0)
+
+      )))
+
+(defun* calfw-blocks-scroll-to-initial-visible-time (&key date buffer custom-map contents-sources annotation-sources view sorter)
+  (when (string-match-p "block" (symbol-name view))
+    (scroll-up-line (floor (* calfw-blocks-lines-per-hour
+                       (calfw-blocks--time-pair-to-float calfw-blocks-initial-visible-time)))))
+    ;; (move-to-window-line 0)
+    ;; (let ((posframe-mouse-banish-function (lambda (_))))
+    ;; (posframe-show calfw-blocks-posframe-buffer
+    ;;                :position 1
+    ;;                ;; :x-pixel-offset 5
+    ;;                )
+    ;;     (set-window-dedicated-p (get-buffer-window) t)
+
+    ;; (display-buffer-in-child-frame (get-buffer calfw-blocks-posframe-buffer)
+    ;;                            '((auto-hide-function . kill-this-buffer) ))
+
+      ;;   (let* ((parent-window (selected-window))
+      ;;          (parent-frame (window-frame parent-window))
+      ;;     (parent-frame-name (frame-parameter parent-frame 'name))
+      ;;     (parent-frame-width (frame-parameter parent-frame 'width))
+      ;;     )
+      ;; (with-current-buffer calfw-blocks-posframe-buffer
+      ;;   (make-frame
+      ;;    `((parent-frame . ,parent-frame)))))
+
+  )
+(defun* calfw-blocks-scroll-to-initial-visible-time-after-update (component)
+  (let ((view (cfw:component-view component)))
+  (when (string-match-p "block" (symbol-name view))
+    (scroll-up-line (floor (* calfw-blocks-lines-per-hour
+                       (calfw-blocks--time-pair-to-float calfw-blocks-initial-visible-time))))))
+    ;; (move-to-window-line 0)
+    ;; (display-buffer-in-child-frame calfw-blocks-posframe-buffer
+    ;;                                '())
+    ;; (let ((posframe-mouse-banish-function (lambda (_))))
+    ;; (posframe-show calfw-blocks-posframe-buffer
+    ;;                :position 1
+    ;;                ;; :x-pixel-offset 5
+    ;;                ))
+    ;; (set-frame-parameter (posframe--find-existing-posframe (get-buffer calfw-blocks-posframe-buffer))
+    ;;                      'parent-frame (selected-frame))
+  )
+
+(advice-add 'cfw:open-calendar-buffer :after 'calfw-blocks-scroll-to-initial-visible-time)
+(advice-add 'cfw:cp-update :after 'calfw-blocks-scroll-to-initial-visible-time-after-update)
+
+
 
 ;; (defun cfw:org-schedule-period-to-calendar (begin end)
 ;;   "[internal] Return calfw calendar items between BEGIN and END
@@ -1389,6 +1453,20 @@ If TEXT does not have a range, return nil."
     (cfw:org-create-source "Red")
     )
    :view 'block-day))
+;; (defun* cfw:open-calendar-buffer
+    ;; (&key date buffer custom-map contents-sources annotation-sources view sorter)
+;;   "Open a calendar buffer simply.
+;; DATE is initial focus date. If it is nil, today is selected
+;; initially.  This function uses the function
+;; `cfw:create-calendar-component-buffer' internally."
+;;   (interactive)
+;;   (let (cp)
+;;     (save-excursion
+;;       (setq cp (cfw:create-calendar-component-buffer
+;; 		:date date :buffer buffer :custom-map custom-map
+;; 		:contents-sources contents-sources
+;; 		:annotation-sources annotation-sources :view view :sorter sorter)))
+;;     (switch-to-buffer (cfw:cp-get-buffer cp))))
 
 
 
