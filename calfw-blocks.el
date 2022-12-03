@@ -249,12 +249,6 @@ return an alist of rendering parameters."
          (model (if model model (calfw-blocks-view-block-nday-week-model n (cfw:component-model component))))
          (begin-date (cfw:k 'begin-date model))
          (end-date (cfw:k 'end-date model)))
-    ;; remove overlays for today's region
-    ;; (let ((new-ols '()))
-    ;;   (dolist (o (cfw:dest-today-ol dest))
-    ;;     (if (eq (overlay-get o 'face) 'cfw:face-today-title)
-    ;;         (push o new-ols)))
-    ;;   )
 
     ;; (print model)
     ;; update model
@@ -1076,21 +1070,21 @@ is added at the beginning of a block to indicate it is the beginning."
 If TEXT does not have a range, return nil."
   (let* ((dotime (cfw:org-tp text 'dotime)))
     (and (stringp dotime) (string-match org-ts-regexp dotime)
-	 (let ((date-string  (match-string 1 dotime))
-	       (extra (cfw:org-tp text 'extra)))
-	   (if (string-match "(\\([0-9]+\\)/\\([0-9]+\\)): " extra)
-	       (let* ((cur-day (string-to-number
-				(match-string 1 extra)))
-		      (total-days (string-to-number
-				   (match-string 2 extra)))
-		      (start-date (org-read-date nil t date-string))
-		      (end-date (time-add
-				 start-date
-				 (seconds-to-time (* 3600 24 (- total-days 1))))))
-		       ;; (unless (= cur-day total-days)
-             (list (calendar-gregorian-from-absolute (time-to-days start-date))
-		                  (calendar-gregorian-from-absolute (time-to-days end-date)) text)))
-	     ))))
+         (let ((date-string  (match-string 1 dotime))
+               (extra (cfw:org-tp text 'extra)))
+           (if (string-match "(\\([0-9]+\\)/\\([0-9]+\\)): " extra)
+               (let* ((cur-day (string-to-number
+                                (match-string 1 extra)))
+                      (total-days (string-to-number
+                                   (match-string 2 extra)))
+                      (start-date (org-read-date nil t date-string))
+                      (end-date (time-add
+                                 start-date
+                                 (seconds-to-time (* 3600 24 (- total-days 1))))))
+                 ;; (unless (= cur-day total-days)
+                 (list (calendar-gregorian-from-absolute (time-to-days start-date))
+                       (calendar-gregorian-from-absolute (time-to-days end-date)) text)))
+           ))))
 
 (defun calfw-blocks-org-summary-format (item)
   "Version of cfw:org-summary-format that adds time data needed to draw blocks."
@@ -1146,133 +1140,8 @@ If TEXT does not have a range, return nil."
      ;; Delete the display property, since displaying images will break our
      ;; table layout.
      'display nil
-     'calfw-blocks-interval (if start-time (cons start-time end-time)))
-;; (make-cfw:event
-;;      :start-date  date
-;;      :start-time  start-time
-;;      :end-date    date
-;;      :end-time    end-time
-;;      :title       (propertize
-;;                    (apply 'propertize text props)
-;;                    ;; include org filename
-;;                    ;; (and buffer (concat " " (buffer-name buffer)))
-;;                    'keymap cfw:org-text-keymap
-;;                    ;; Delete the display property, since displaying images will break our
-;;                    ;; table layout.
-;;                    'display nil)
-;;      :location    nil
-;;      :description nil)
-    ))
+     'calfw-blocks-interval (if start-time (cons start-time end-time)))))
 (setq cfw:org-schedule-summary-transformer 'calfw-blocks-org-summary-format)
-
-
-;; (defun cfw:org-to-calendar (file begin end)
-;;   (loop for event in (cfw:org-convert-org-to-calfw file)
-;;         if (and (listp event)
-;;                 (equal 'periods (car event)))
-;;         collect
-;;         (cons
-;;          'periods
-;;          (loop for evt in (cadr event)
-;;                ;; for aaa = (print (substring-no-properties (cfw:event-title evt)))
-;;                if (and
-;;                    (cfw:date-less-equal-p begin (cfw:event-end-date evt))
-;;                    (cfw:date-less-equal-p (cfw:event-start-date evt) end))
-;;                collect evt))
-;;         else if (cfw:date-between begin end (cfw:event-start-date event))
-;;         collect event))
-
-
-
-
-(defun my/org-open-calendar ()
-  (interactive)
-  (cfw:open-calendar-buffer
-   :contents-sources
-   (list
-    (cfw:org-create-file-source "Todos" "~/pensieve-beta/tasks/todos.org" "Green") ; orgmode source
-    )
-   :view 'block-week))
-
-(defun my-open-calendar ()
-  (interactive)
-  (cfw:open-calendar-buffer
-   :contents-sources
-   (list
-    (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
-    )
-   :view 'block-week))
-(defun my-open-calendar-demo ()
-  (interactive)
-  (cfw:open-calendar-buffer
-   :contents-sources
-   (list
-    (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-demo.org" "Green") ; orgmode source
-    )
-   :view 'block-week))
-
-(defun my-open-calendar-day ()
-  (interactive)
-  (cfw:open-calendar-buffer
-   :contents-sources
-   (list
-    (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
-    )
-   :view 'block-day))
-(defun my-open-calendar-3day ()
-  (interactive)
-  (cfw:open-calendar-buffer
-   :contents-sources
-   (list
-    (cfw:org-create-file-source "Test" "~/code/emacs/calfw-blocks/calfw-blocks-test.org" "Green") ; orgmode source
-    )
-   :view 'block-3-day))
-
-(defun my-open-calendar-agenda ()
-  (interactive)
-  (cfw:open-calendar-buffer
-   :contents-sources
-   (list
-    (cfw:org-create-source "medium purple")
-    )
-   :view 'block-week))
-
-(map! "C-c o" 'my-open-calendar-agenda)
-
-
-(defun my-open-calendar-agenda2 ()
-  (interactive)
-  (cfw:open-calendar-buffer
-   :contents-sources
-   (list
-    (cfw:org-create-source "Red")
-    )
-   :view 'week))
-
-
-
-(defun my-open-calendar-agenda-day ()
-  (interactive)
-  (cfw:open-calendar-buffer
-   :contents-sources
-   (list
-    (cfw:org-create-source "Red")
-    )
-   :view 'block-day))
-;; (defun* cfw:open-calendar-buffer
-    ;; (&key date buffer custom-map contents-sources annotation-sources view sorter)
-;;   "Open a calendar buffer simply.
-;; DATE is initial focus date. If it is nil, today is selected
-;; initially.  This function uses the function
-;; `cfw:create-calendar-component-buffer' internally."
-;;   (interactive)
-;;   (let (cp)
-;;     (save-excursion
-;;       (setq cp (cfw:create-calendar-component-buffer
-;; 		:date date :buffer buffer :custom-map custom-map
-;; 		:contents-sources contents-sources
-;; 		:annotation-sources annotation-sources :view view :sorter sorter)))
-;;     (switch-to-buffer (cfw:cp-get-buffer cp))))
 
 
 
