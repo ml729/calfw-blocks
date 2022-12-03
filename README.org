@@ -2,6 +2,9 @@
 
 Duration-based time blocks for the Emacs Calendar Framework (https://github.com/kiwanami/emacs-calfw).
 
+* Screenshot
+[[screenshot.png]]
+
 * Installation
 ** Manual Installation
 Clone this git repo (e.g. to `~/.emacs.d/site-lisp/')
@@ -27,6 +30,8 @@ This package comes with the following new calfw views:
 'block-4-day
 'block-5-day
 #+end_src
+The `block-week` view always starts on Sunday. The `block-day` and `block-<n>-day` views always start on today.
+
 You can use these to define functions that directly open calfw with these views.
 Examples:
 #+begin_src emacs lisp
