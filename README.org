@@ -1,6 +1,6 @@
 * calfw-blocks.el
 
-Duration-based time blocks for the Emacs Calendar Framework (https://github.com/kiwanami/emacs-calfw).
+Visual time blocks for the [[https://github.com/kiwanami/emacs-calfw][Emacs Calendar Framework (calfw)]].
 
 * Screenshot
 [[screenshot.png]]
@@ -21,7 +21,7 @@ And add its path to `'load-path':
 #+end_src
 
 * Usage
-This package comes with the following new calfw views:
+This package comes with the following new ~calfw~ views:
 #+begin_src
 'block-day
 'block-week
@@ -30,7 +30,8 @@ This package comes with the following new calfw views:
 'block-4-day
 'block-5-day
 #+end_src
-The `block-week` view always starts on Sunday. The `block-day` and `block-<n>-day` views always start on today.
+The ~block-week~ view always starts on Sunday.
+The ~block-day~ and ~block-<n>-day~ views always start on the current day.
 
 You can use these to define functions that directly open calfw with these views.
 Examples:
@@ -57,11 +58,11 @@ Examples:
 
 * Customization
 Notable customization options:
-- `calfw-blocks-earliest-visible-time': what time of day the calendar starts at.
-- `calfw-blocks-show-time-grid': shows a time grid if non-nil.
-- `calfw-blocks-default-event-length': the length in hours of events with a start time but no end time; used to determine the size of the rendered block.
-- `calfw-blocks-lines-per-hour': how many lines each hour gets.
-- `calfw-blocks-min-block-width': the smallest width a block can be in characters (includes divider character). If there are too many concurrent events, some events are hidden so that all blocks are at least `calfw-blocks-min-block-width' characters wide.
+- ~calfw-blocks-earliest-visible-time~: what time of day the calendar starts at.
+- ~calfw-blocks-show-time-grid~: shows a time grid if non-nil.
+- ~calfw-blocks-default-event-length~: the length in hours of events with a start time but no end time; used to determine the size of the rendered block.
+- ~calfw-blocks-lines-per-hour~: how many lines each hour gets.
+- ~calfw-blocks-min-block-width~: the smallest width a block can be in characters (includes divider character). If there are too many concurrent events, some events are hidden so that all blocks are at least `calfw-blocks-min-block-width' characters wide.
 
 
 * License
