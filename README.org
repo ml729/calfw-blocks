@@ -20,6 +20,8 @@ And add its path to `'load-path':
 (add-to-list 'load-path "~/.emacs.d/site-lisp/calfw-blocks")
 #+end_src
 
+Make sure this package is loaded after calfw.
+
 * Usage
 This package comes with the following new ~calfw~ views:
 #+begin_src
