@@ -6,7 +6,7 @@
 ;; Maintainer: ml729 <null>
 ;; Created: July 06, 2022
 ;; Version: 0.0.1
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "25.4"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
@@ -77,7 +77,7 @@ Also used for events with a start time and no end time."
 Modus Vivendi's colors for graphs."
   :group 'calfw-blocks
   :type 'list)
-(defface overline
+(defface calfw-blocks-overline
   '((t :overline t))
     "Basic face for overline."
   :group 'basic-faces)
@@ -920,7 +920,7 @@ is added at the beginning of a block to indicate it is the beginning."
                               'face
                               (seq-filter (lambda (x) x)
                                (list face (if is-exceeded-indicator 'italic)
-                                     (if (= i 0) 'overline)
+                                     (if (= i 0) 'calfw-blocks-overline)
                                      ))
                               'calfw-blocks-horizontal-pos block-horizontal-pos))
             rendered-block))
@@ -962,7 +962,7 @@ is added at the beginning of a block to indicate it is the beginning."
             (current-line-lst '()))
         (if (or (not split-blocks) (< i (caar split-blocks)))
             (if make-time-grid-line
-                (push (propertize (make-string cell-width ? ) 'face 'overline) current-line-lst)
+                (push (propertize (make-string cell-width ? ) 'face 'calfw-blocks-overline) current-line-lst)
               (push (make-string cell-width ? ) current-line-lst))
           (while (and split-blocks (= i (caar split-blocks)))
             (push (cadr (pop split-blocks)) current-line-lst))
@@ -1000,7 +1000,7 @@ is added at the beginning of a block to indicate it is the beginning."
         (setq prev-end end)))))
 
 (defun calfw-blocks--grid-line (n)
-  (propertize (make-string n ? ) 'face 'overline))
+  (propertize (make-string n ? ) 'face 'calfw-blocks-overline))
 
 (defun calfw-blocks-superimpose-face (text face)
   (propertize text 'face (list (get-text-property 0 'face text) face)))
