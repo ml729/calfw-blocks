@@ -318,9 +318,12 @@ Moves forward if NUM is negative."
 
 (defun calfw-blocks-render-toolbar (width current-view prev-cmd next-cmd)
   "[internal] Return a text of the toolbar.
-WIDTH is width of the toolbar.
-CURRENT-VIEW is a symbol of the current view type. This symbol is used to select the button faces on the toolbar.
-PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(next)-month-command' and `cfw:navi-previous(next)-week-command'."
+
+WIDTH is width of the toolbar. CURRENT-VIEW is a symbol of the
+current view type. This symbol is used to select the button faces
+on the toolbar. PREV-CMD and NEXT-CMD are the moving view
+command, such as `cfw:navi-previous(next)-month-command' and
+`cfw:navi-previous(next)-week-command'."
   (let* ((prev (cfw:render-button " < " prev-cmd))
          (today (cfw:render-button "Today" 'cfw:navi-goto-today-command))
          (next (cfw:render-button " > " next-cmd))
@@ -473,8 +476,8 @@ period-stack -> ((row-num . period) ... )"
     periods-each-days))
 
 (defun calfw-blocks-get-time-interval (event)
-  "Return (start-time . end-time) of EVENT, a cfw:event struct.
-start-time and end-time are both lists '(a b) where a is the hour,
+  "Return (start-time . end-time) of EVENT, a `cfw:event' struct.
+start-time and end-time are both lists (a b) where a is the hour,
 b is the minute."
   (when (cfw:event-start-time event)
   (cons (cfw:event-start-time event)
@@ -524,7 +527,8 @@ b is the minute."
 
 (defun calfw-blocks-render-periods-title (date week-day begin end content cell-width model)
   "[internal] Return a title string.
-Fix erroneous 'width' in last line, should be fixed upstream in calfw."
+
+Fix erroneous width in last line, should be fixed upstream in calfw."
   (let* ((title-begin-abs
           (max (calendar-absolute-from-gregorian begin)
           (calendar-absolute-from-gregorian (cfw:k 'begin-date model))))
@@ -557,8 +561,10 @@ Fix erroneous 'width' in last line, should be fixed upstream in calfw."
      times-lst)))
 
 (defun calfw-blocks-render-columns (day-columns param)
-  "[internal] This function concatenates each rows on the days into a string of a physical line.
-DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (DAY-TITLE . ANNOTATION-TITLE) STRING STRING...)."
+  "[internal] Concatenate rows on the days into a string of a physical line.
+
+DAY-COLUMNS is a list of columns. A column is a list of following
+form: (DATE (DAY-TITLE . ANNOTATION-TITLE) STRING STRING...)."
   (let* ((cell-width  (cfw:k 'cell-width  param))
         (cell-height (cfw:k 'cell-height param))
         (time-width (cfw:k 'time-width param))
@@ -680,13 +686,13 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
 (defun calfw-blocks--interval-intersect? (a b)
   "Return t iff intervals A and B intersect.
 Return nil otherwise. Ain interval [a1, a2) is represented as a
-list '(a1 a2)."
+list (a1 a2)."
   (or (calfw-blocks--interval-member? (car a) b)
       (calfw-blocks--interval-member? (car b) a)))
 
 (defun calfw-blocks--interval-intersection (a b)
   "Compute intersection of intervals A and B.
-An interval [a1, a2) is represented as a list '(a1 a2).
+An interval [a1, a2) is represented as a list (a1 a2).
 Return nil if intersection is empty."
   (if (calfw-blocks--interval-intersect? a b)
       (let ((start (max (car a) (car b)))
