@@ -166,14 +166,14 @@ not know how to display the contents in the destinations."
 (defun calfw-blocks-view-model-make-day-names-for-nday-week (n begin-date)
   "[internal] Return a list of index of day of the week."
   (let ((begin-day (calendar-day-of-week begin-date)))
-  (loop for i from 0 below n
+  (cl-loop for i from 0 below n
         collect (% (+ begin-day i) cfw:week-days))))
 ;;todo replace calendar week start day with day of the week of init date
 
 (defun calfw-blocks-view-model-make-nday-weeks (n begin-date end-date)
   "[internal] Return a list of weeks those have 7 days."
   (let* ((first-day-day (calendar-day-of-week begin-date)) weeks)
-    (loop with i = begin-date
+    (cl-loop with i = begin-date
           with day = first-day-day
           with week = nil
           do
@@ -181,7 +181,7 @@ not know how to display the contents in the destinations."
           (when (and (= 0 (mod (- day first-day-day) n)) week)
             (push (nreverse week) weeks)
             (setq week nil)
-            (when (cfw:date-less-equal-p end-date i) (return)))
+            (when (cfw:date-less-equal-p end-date i) (cl-return)))
           ;; add a day
           (push i week)
           ;; increment
@@ -255,7 +255,7 @@ return an alist of rendering parameters."
     (setf (cfw:component-model component) model)
     (setq calfw-blocks-header-line-string (concat
                                            "  Time"
-                                           (loop for i in (cfw:k 'headers model)
+                                           (cl-loop for i in (cfw:k 'headers model)
                                                  with VL = (cfw:k 'vl param) with cell-width = (cfw:k 'cell-width param)
                                                  for name = (aref calendar-day-name-array i)
                                                  concat
@@ -310,7 +310,7 @@ Moves forward if NUM is negative."
 
 (defun calfw-blocks-render-day-of-week-names (model param)
   "[internal] Insert week names."
-  (loop for i in (cfw:k 'headers model)
+  (cl-loop for i in (cfw:k 'headers model)
         with VL = (cfw:k 'vl param) with cell-width = (cfw:k 'cell-width param)
         for name = (aref calendar-day-name-array i) do
         (insert VL (cfw:rt (cfw:render-center cell-width name)
@@ -367,7 +367,7 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
 
 (defun calfw-blocks-render-calendar-cells-block-weeks (model param title-func)
   "[internal] Insert calendar cells for week based views."
-  (loop for week in (cfw:k 'weeks model) do
+  (cl-loop for week in (cfw:k 'weeks model) do
         ;; (setq week (list (nth 4 week)))
         ;; (print week)
         (calfw-blocks-render-calendar-cells-days model param title-func week
@@ -378,7 +378,7 @@ PREV-CMD and NEXT-CMD are the moving view command, such as `cfw:navi-previous(ne
                                              days content-fun do-weeks)
   "[internal] Insert calendar cells for the linear views."
   (calfw-blocks-render-columns
-   (loop with cell-width      = (cfw:k 'cell-width param)
+   (cl-loop with cell-width      = (cfw:k 'cell-width param)
          with days            = (or days (cfw:k 'days model))
          with content-fun     = (or content-fun
                                     'cfw:render-event-days-overview-content)
@@ -431,7 +431,7 @@ Modified to not truncate events. TODO"
   (when periods-stack
     (let ((stack (sort (copy-sequence periods-stack)
                        (lambda (a b) (< (car a) (car b))))))
-      (loop for (row (begin end content)) in stack
+      (cl-loop for (row (begin end content)) in stack
             for beginp = (equal date begin)
             for endp = (equal date end)
             for width = (- cell-width 2)
@@ -458,7 +458,7 @@ period is a pair containing the start and end of time of each event.
 create period-stacks on the each days.
 period-stack -> ((row-num . period) ... )"
   (let* (periods-each-days)
-    (loop for (begin end event) in (cfw:k 'periods model)
+    (cl-loop for (begin end event) in (cfw:k 'periods model)
           for content = (if (cfw:event-p event)
                             ;; (cfw:event-period-overview event)
                             (cfw:event-period-overview event)
@@ -531,7 +531,7 @@ Fix erroneous 'width' in last line, should be fixed upstream in calfw."
          (title-begin (calendar-gregorian-from-absolute title-begin-abs))
          (num (- (calendar-absolute-from-gregorian date) title-begin-abs)))
     (when content
-      (loop with title = (substring content 0)
+      (cl-loop with title = (substring content 0)
             for i from 0 below num
             for pdate = (calendar-gregorian-from-absolute (+ title-begin-abs i))
             for chopn = (+ (if (equal begin pdate) 1 0) (if (equal end pdate) 1 0))
@@ -590,7 +590,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
     ;;                'cfw:date date)
     ;;             (cfw:render-left cell-width "")))
     ;;     )))
-    (loop for day-rows in day-columns
+    (cl-loop for day-rows in day-columns
           for date = (car day-rows)
           for (tday . ant) = (cadr day-rows)
           do
@@ -606,8 +606,8 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
     ;; (print cell-height) ;; 39
     ;; (print cell-width) ;; 17
     ;; day contents
-    (loop with breaked-all-day-columns =
-        (loop for day-rows in day-columns
+    (cl-loop with breaked-all-day-columns =
+        (cl-loop for day-rows in day-columns
                         for (date ants . lines) = day-rows
                         collect
                         (cons date (calfw-blocks-render-all-day-events
@@ -617,7 +617,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
         with all-day-columns-height = (seq-max (mapcar 'length breaked-all-day-columns))
         for i from 1 below all-day-columns-height do
           (insert (cfw:render-left time-width ""))
-        (loop for day-rows in breaked-all-day-columns-padded
+        (cl-loop for day-rows in breaked-all-day-columns-padded
                 for date = (car day-rows)
                 for row = (nth i day-rows)
                 do
@@ -635,8 +635,8 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                      'cfw:date date)))
           (insert VL EOL))
 
-    (loop with breaked-day-columns =
-          (loop for day-rows in day-columns
+    (cl-loop with breaked-day-columns =
+          (cl-loop for day-rows in day-columns
                 for (date ants . lines) = day-rows
                 collect
                 (cons date (calfw-blocks-render-event-blocks
@@ -645,7 +645,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
           with time-columns = (calfw-blocks-time-column time-width cell-height)
           for i from 1 below cell-height do
           (insert (cfw:render-left time-width (nth (1- i) time-columns)))
-          (loop for day-rows in breaked-day-columns
+          (cl-loop for day-rows in breaked-day-columns
                 for date = (car day-rows)
                 for row = (nth i day-rows)
                 do
@@ -815,7 +815,7 @@ events are not displayed is shown."
                                                    new-lines-lst)))
              (lines-left-in-group (- (length (cdr g)) (length taken-intervals)))
              (remaining-intervals (calfw-blocks--interval-subtract-many `(0 ,cell-width) taken-intervals))
-             (remaining-intervals-length (reduce '+ (mapcar (lambda (x) (- (cadr x) (car x))) remaining-intervals)))
+             (remaining-intervals-length (cl-reduce '+ (mapcar (lambda (x) (- (cadr x) (car x))) remaining-intervals)))
              (exceeded-cell-width (and (> lines-left-in-group 0)
                                        (< (/ remaining-intervals-length lines-left-in-group) calfw-blocks-min-block-width)))
              (truncated-lines-left-in-group (if exceeded-cell-width (floor (/ remaining-intervals-length calfw-blocks-min-block-width))
@@ -1051,12 +1051,12 @@ is added at the beginning of a block to indicate it is the beginning."
       (cfw:dest-after-update dest)
       (cfw:cp-fire-update-hooks component))))
 
-(defun* calfw-blocks-scroll-to-initial-visible-time (&key date buffer custom-map contents-sources annotation-sources view sorter)
+(cl-defun calfw-blocks-scroll-to-initial-visible-time (&key date buffer custom-map contents-sources annotation-sources view sorter)
   (when (string-match-p "block" (symbol-name view))
     (scroll-up-line (floor (* calfw-blocks-lines-per-hour
                        (calfw-blocks--time-pair-to-float calfw-blocks-initial-visible-time))))))
 
-(defun* calfw-blocks-scroll-to-initial-visible-time-after-update (component)
+(cl-defun calfw-blocks-scroll-to-initial-visible-time-after-update (component)
   (let ((view (cfw:component-view component)))
     (when (string-match-p "block" (symbol-name view))
       (scroll-up-line (floor (* calfw-blocks-lines-per-hour
