@@ -1078,7 +1078,7 @@ If TEXT does not have a range, return nil."
     (and (stringp dotime) (string-match org-ts-regexp dotime)
          (let ((date-string  (match-string 1 dotime))
                (extra (cfw:org-tp text 'extra)))
-           (if (string-match "(\\([0-9]+\\)/\\([0-9]+\\)): " extra)
+           (if (and extra (string-match "(\\([0-9]+\\)/\\([0-9]+\\)): " extra))
                (let* ((cur-day (string-to-number
                                 (match-string 1 extra)))
                       (total-days (string-to-number
@@ -1112,7 +1112,7 @@ If TEXT does not have a range, return nil."
          (props (cfw:extract-text-props item 'face 'keymap))
          (extra (cfw:org-tp item 'extra)))
     (setq text (substring-no-properties text))
-    (when (string-match (concat "^" org-deadline-string ".*") extra)
+    (when (and extra (string-match (concat "^" org-deadline-string ".*") extra))
       (add-text-properties 0 (length text) (list 'face (org-agenda-deadline-face 1.0)) text))
     (if org-todo-keywords-for-agenda
       (when (string-match (concat "^[\t ]*\\<\\(" (mapconcat 'identity org-todo-keywords-for-agenda "\\|") "\\)\\>") text)
