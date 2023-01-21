@@ -542,8 +542,8 @@ Fix erroneous 'width' in last line, should be fixed upstream in calfw."
             (cfw:render-truncate title cell-width (equal end date))))))
 
 
-(defun calfw-blocks-format-time (t)
-  (format "%02d:%02d" (car t) (cadr t)))
+(defun calfw-blocks-format-time (time-obj)
+  (format "%02d:%02d" (car time-obj) (cadr time-obj)))
 
 (defun calfw-blocks-time-column (time-width cell-height)
   (let* ((num-hours (floor (/ cell-height calfw-blocks-lines-per-hour)))
