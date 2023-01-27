@@ -1029,6 +1029,9 @@ is added at the beginning of a block to indicate it is the beginning."
            (push overlay ols)))))
     (setf (cfw:dest-today-ol dest) ols)))
 
+(defvar cfw:highlight-today t
+  "Variable to control whether today is rendered differently than other days.")
+
 (defun cfw:cp-update (component)
   "[internal] Clear and re-draw the component content."
   (let* ((buf (cfw:cp-get-buffer component))
@@ -1045,7 +1048,7 @@ is added at the beginning of a block to indicate it is the beginning."
                                        component)))
       (if (eq (cfw:component-view component) 'block-week)
           (calfw-blocks-dest-ol-today-set dest)
-      (cfw:dest-ol-today-set dest))
+        (when cfw:highlight-today (cfw:dest-ol-today-set dest)))
       (cfw:cp-set-selected-date
        component (cfw:component-selected component))
       (cfw:dest-after-update dest)
