@@ -206,7 +206,8 @@ return an alist of rendering parameters."
        ;; (cell-width  (cfw:round-cell-width
        ;;               (max 5 (* 7 (/ (- win-width junctions-width) 16)))))
        (cell-width (/ (- win-width junctions-width (* 2 date-cell-width)) 2))
-       (cell-height (* calfw-blocks-lines-per-hour 24))
+       (cell-height win-width)
+       ;; (cell-height (max 2 (/ win-height (/ n 2))))
        (total-width (+ (* date-cell-width 2) (* cell-width 2) junctions-width)))
     `((cell-width . ,cell-width)
       (date-cell-width . ,date-cell-width)
@@ -249,6 +250,7 @@ return an alist of rendering parameters."
     ;;                                 ""
     ;;                               calfw-blocks-header-line-string))))
 
+    (setq header-line-format "")
     ;; ;; header
     (insert
      "\n"
