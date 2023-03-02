@@ -191,7 +191,7 @@ return an alist of rendering parameters."
        (cell-width  (cfw:round-cell-width
                      (max 5 (* 7 (/ (- win-width junctions-width) 16)))))
        (cell-height (* calfw-blocks-lines-per-hour 24))
-       (total-width (+ time-width (* cell-width n) junctions-width)))
+       (total-width (+ (* date-cell-width 2) (* cell-width 2) junctions-width)))
     `((cell-width . ,cell-width)
       (date-cell-width . ,date-cell-width)
       (cell-height . ,cell-height)
@@ -233,15 +233,15 @@ return an alist of rendering parameters."
     ;;                               calfw-blocks-header-line-string))))
 
     ;; ;; header
-    ;; (insert
-    ;;  "\n"
-    ;;  (cfw:rt
-    ;;   (cfw:render-title-period begin-date end-date)
-    ;;   'cfw:face-title)
-    ;;  EOL (calfw-blocks-render-toolbar total-width 'week
-    ;;                          (calfw-blocks-navi-previous-nday-week-command n)
-    ;;                          (calfw-blocks-navi-next-nday-week-command n))
-    ;;  EOL hline)
+    (insert
+     "\n"
+     (cfw:rt
+      (cfw:render-title-period begin-date end-date)
+      'cfw:face-title)
+     EOL (calfw-blocks-render-toolbar total-width 'week
+                             (calfw-blocks-navi-previous-nday-week-command n)
+                             (calfw-blocks-navi-next-nday-week-command n))
+     EOL)
     ;; ;; time header
     ;; (insert (cfw:rt (cfw:render-right time-width "Time")
     ;;                        'default))
@@ -336,16 +336,16 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
         )
     ;; day title
     ;; (loop for day-rows in day-columns
-    ;;       for date = (car day-rows)
-    ;;       for (tday . ant) = (cadr day-rows)
-    ;;       do
-    ;; ;;       (insert
-    ;; ;;        VL (if date
-    ;;               (cfw:tp
-    ;;                (cfw:render-default-content-face
-    ;;                 (cfw:render-add-right cell-width tday ant)
-    ;;                 'cfw:face-day-title)
-    ;;                'cfw:date date)
+          ;; for date = (car day-rows)
+          ;; for (tday . ant) = (cadr day-rows)
+          ;; do
+    ;;       (insert
+    ;;        VL (if date
+                  ;; (cfw:tp
+                  ;;  (cfw:render-default-content-face
+                  ;;   (cfw:render-add-right cell-width tday ant)
+                  ;;   'cfw:face-day-title)
+                  ;;  'cfw:date date)
     ;; ;;             (cfw:render-left cell-width ""))))
     ;; (insert VL EOL)
     ;; day contents
@@ -407,32 +407,36 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
     ;;     )
     ;;   )
     (loop for j from 0 below (/ num-days 2)
-          with day1 = (nth j first-half)
-          with date1 = (car day1)
-          with line1 = (cddr day1)
-          with breaked-day1 =
+          for day1 = (nth j first-half)
+          for date1 = (car day1)
+          for line1 = (cddr day1)
+          for breaked-day1 =
           (cons date1 (cfw:render-break-lines
                       line1 cell-width (1- cell-height)))
 
-          with day2 = (nth j second-half)
-          with date2 = (car day2)
-          with line2 = (cddr day2)
-          with breaked-day2 =
+          for day2 = (nth j second-half)
+          for date2 = (car day2)
+          for line2 = (cddr day2)
+          for breaked-day2 =
           (cons date2 (cfw:render-break-lines
                       line2 cell-width (1- cell-height)))
-          with max-height = (max 5 (max (length (cdr breaked-day1))
+          for max-height = (max 5 (max (length (cdr breaked-day1))
                                  (length (cdr breaked-day2))))
           do
-          (loop with breaked-day-columns = (list breaked-day1 breaked-day2)
-                ;; (loop for day-rows in `(,day1 ,day2)
-                ;;       for (date ants . lines) = day-rows
-                ;;       collect
-                ;;       (cons date (cfw:render-break-lines
-                ;;                   lines cell-width (1- cell-height))))
+          (loop with breaked-day-columns = `(,breaked-day1 ,breaked-day2)
                 with breaked-date-columns =
-                     (loop for date in `(,date1 ,date2)
+                     (loop for day-rows in `(,day1 ,day2)
+                        for date = (car day-rows)
+                        for (tday . ant) = (cadr day-rows)
+
                            collect
-                           (cons date '("lol")))
+                                 (cons date           (list (cfw:tp
+                   (cfw:render-default-content-face
+                    (cfw:render-add-right date-cell-width tday ant)
+                    'cfw:face-day-title)
+                   'cfw:date date))
+
+                           ))
 
                 for i from 1 below max-height do
                 (loop for k from 0 below 2
@@ -453,7 +457,9 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                             (cfw:render-left cell-width (and row (format "%s" row))))
                            'cfw:date date)))
                 (insert VL EOL))
-          (insert cline))
+          (insert cline)
+          )
+    (insert EOL)
     ))
 
 (advice-add 'cfw:cp-dispatch-view-impl :override 'calfw-blocks-cp-dispatch-view-impl)
