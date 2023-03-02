@@ -85,9 +85,6 @@ Modus Vivendi's colors for graphs."
   "Number of characters of day of week to display in transpose views.
 Displays full name if nil.")
 
-
-(setq calfw-blocks-transpose-date-width 15)
-
 (defface calfw-blocks-overline
   '((t :overline t))
     "Basic face for overline."
@@ -153,6 +150,9 @@ VIEW is a symbol of the view type."
    ((eq 'transpose-12-day       view)  'calfw-blocks-view-transpose-12-day)
    ((eq 'transpose-14-day       view)  'calfw-blocks-view-transpose-14-day)
    (t (error "Not found such view : %s" view))))
+
+
+;; Transpose
 
 (defun calfw-blocks-render-append-transpose-parts (param)
   "[internal] Append rendering parts to PARAM and return a new list."
@@ -340,8 +340,6 @@ return an alist of rendering parameters."
          (cons date (cons (cons tday ant) prs-contents)))
    param))
 
-(setq cfw:render-line-breaker 'cfw:render-line-breaker-wordwrap)
-
 (defun calfw-blocks-render-columns-transpose (day-columns param)
   "[internal] This function concatenates each rows on the days into a string of a physical line.
 DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (DAY-TITLE . ANNOTATION-TITLE) STRING STRING...)."
@@ -436,6 +434,8 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
     ))
 
 (advice-add 'cfw:cp-dispatch-view-impl :override 'calfw-blocks-cp-dispatch-view-impl)
+
+;; Block views
 
 (defun calfw-blocks-view-block-nday-week-model (n model)
   "[internal] Create a logical view model of weekly calendar.
@@ -641,11 +641,11 @@ command, such as `cfw:navi-previous(next)-month-command' and
          (tweek (cfw:render-button
                  "Two Weeks" 'cfw:change-view-two-weeks
                  (eq current-view 'two-weeks)))
-         (transpose-week (cfw:render-button
-                 "Transpose 2W" 'calfw-blocks-change-view-transpose-14-day
+         (transpose-two-week (cfw:render-button
+                 "2W^T" 'calfw-blocks-change-view-transpose-14-day
                  (eq current-view 'transpose-14-day)))
          (transpose-week (cfw:render-button
-                 "Transpose 2W" 'calfw-blocks-change-view-transpose-8-day
+                 "W^T" 'calfw-blocks-change-view-transpose-8-day
                  (eq current-view 'transpose-8-day)))
          (week (cfw:render-button
                 "Week" 'calfw-blocks-change-view-block-week
@@ -660,7 +660,7 @@ command, such as `cfw:navi-previous(next)-month-command' and
          (toolbar-text
           (cfw:render-add-right
            width (concat sp prev sp next sp today sp)
-           (concat day sp 3day sp week sp tweek sp transpose-week sp month sp))))
+           (concat day sp 3day sp week sp tweek sp transpose-week sp transpose-two-week sp month sp))))
     (cfw:render-default-content-face toolbar-text 'cfw:face-toolbar)))
 
 (advice-add 'cfw:render-toolbar :override 'calfw-blocks-render-toolbar)
