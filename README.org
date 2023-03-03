@@ -23,7 +23,7 @@ And add its path to `'load-path':
 Make sure this package is loaded after calfw.
 
 * Usage
-This package comes with the following new ~calfw~ views:
+This package comes with the following ~calfw~ views that display time blocks:
 #+begin_src
 'block-day
 'block-week
@@ -33,7 +33,17 @@ This package comes with the following new ~calfw~ views:
 'block-5-day
 #+end_src
 The ~block-week~ view always starts on Sunday.
-The ~block-day~ and ~block-<n>-day~ views always start on the current day.
+The ~block-day~ and ~block-<n>-day~ views always start on the current day. The top right button labelled ~Week~ uses ~block-week~.
+
+The package also includes two-column transposed versions of the original calfw views (credit to @novoid for the [[https://github.com/kiwanami/emacs-calfw/issues/22][design]]), where days of the week are displayed vertically rather than horizontally:
+#+begin_src
+'transpose-8-day
+'transpose-10-day
+'transpose-12-day
+'transpose-14-day
+'transpose-two-weeks
+#+end_src
+The ~transpose-<n>-day~ views always start on the current day, and ~transpose-two-weeks~ always starts on the most recent Sunday. The top right buttons labelled ~W^T~ and ~2W^T~ use ~transpose-8-day~ and ~transpose-14-day~, respectively.
 
 You can use these to define functions that directly open calfw with these views.
 Examples:

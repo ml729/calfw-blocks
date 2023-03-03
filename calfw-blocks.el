@@ -148,6 +148,7 @@ VIEW is a symbol of the view type."
    ((eq 'block-2-day       view)  'calfw-blocks-view-block-2-day)
    ((eq 'block-3-day       view)  'calfw-blocks-view-block-3-day)
    ((eq 'block-4-day       view)  'calfw-blocks-view-block-4-day)
+   ((eq 'block-5-day       view)  'calfw-blocks-view-block-5-day)
    ((eq 'block-7-day       view)  'calfw-blocks-view-block-7-day)
    ((eq 'transpose-8-day       view)  'calfw-blocks-view-transpose-8-day)
    ((eq 'transpose-10-day       view)  'calfw-blocks-view-transpose-10-day)
