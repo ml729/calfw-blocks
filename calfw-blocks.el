@@ -78,6 +78,9 @@ Modus Vivendi's colors for graphs."
   :group 'calfw-blocks
   :type 'list)
 
+(defcustom calfw-blocks-display-end-times t
+  "Whether or not to display end times in blocks.")
+
 (defcustom calfw-blocks-transpose-date-width 15
   "Width (in characters) of date cell in transpose views.")
 
@@ -93,6 +96,7 @@ Displays full name if nil.")
 
 (defvar calfw-blocks-earliest-visible-time '(0 0)
   "Earliest visible time in a day as list (hours minutes).")
+
 
 (defvar calfw-blocks-nday-views-alist
   '((1 . block-day)
@@ -149,6 +153,7 @@ VIEW is a symbol of the view type."
    ((eq 'transpose-10-day       view)  'calfw-blocks-view-transpose-10-day)
    ((eq 'transpose-12-day       view)  'calfw-blocks-view-transpose-12-day)
    ((eq 'transpose-14-day       view)  'calfw-blocks-view-transpose-14-day)
+   ((eq 'transpose-two-weeks    view) 'calfw-blocks-view-transpose-two-weeks)
    (t (error "Not found such view : %s" view))))
 
 
@@ -200,14 +205,9 @@ return an alist of rendering parameters."
        ;; title 2, toolbar 1, header 2, hline 2, footer 1, margin 2 => 10
        (win-height (max 15 (- (cfw:dest-height dest) 10)))
        (junctions-width (* (char-width cfw:fchar-junction) 5))
-       ;; (date-cell-width  (cfw:round-cell-width
-       ;;               (max 5 (/ (- win-width junctions-width) 16))))
        (date-cell-width calfw-blocks-transpose-date-width)
-       ;; (cell-width  (cfw:round-cell-width
-       ;;               (max 5 (* 7 (/ (- win-width junctions-width) 16)))))
        (cell-width (/ (- win-width junctions-width (* 2 date-cell-width)) 2))
-       (cell-height win-height)
-       ;; (cell-height (max 2 (/ win-height (/ n 2))))
+       (cell-height (* 5 win-height)) ;; every cell has essentially unlimited height
        (total-width (+ (* date-cell-width 2) (* cell-width 2) junctions-width)))
     `((cell-width . ,cell-width)
       (date-cell-width . ,date-cell-width)
@@ -226,30 +226,14 @@ return an alist of rendering parameters."
          (EOL (cfw:k 'eol param))
          (VL (cfw:k 'vl param))
          (time-hline (cfw:k 'time-hline param))
-         ;; (hline (concat time-hline (cfw:k 'hline param)))
-         ;; (cline (concat time-hline (cfw:k 'cline param)))
          (hline (cfw:k 'hline param))
          (cline (cfw:k 'cline param))
          (model (if model model (calfw-blocks-view-block-nday-week-model n (cfw:component-model component))))
          (begin-date (cfw:k 'begin-date model))
          (end-date (cfw:k 'end-date model)))
 
-    ;; (print model)
     ;; update model
     (setf (cfw:component-model component) model)
-    ;; (setq calfw-blocks-header-line-string (concat
-    ;;                                        "  Time"
-    ;;                                        (cl-loop for i in (cfw:k 'headers model)
-    ;;                                              with VL = (cfw:k 'vl param) with cell-width = (cfw:k 'cell-width param)
-    ;;                                              for name = (aref calendar-day-name-array i)
-    ;;                                              concat
-    ;;                                              (concat VL (cfw:rt (cfw:render-center cell-width name)
-    ;;                                                                 (cfw:render-get-week-face i 'cfw:face-header))))))
-    ;; (setq header-line-format '((:eval
-    ;;                             (if (< (line-number-at-pos (window-start)) 6)
-    ;;                                 ""
-    ;;                               calfw-blocks-header-line-string))))
-
     (setq header-line-format "")
     ;; ;; header
     (insert
@@ -261,11 +245,6 @@ return an alist of rendering parameters."
                              (calfw-blocks-navi-previous-nday-week-command n)
                              (calfw-blocks-navi-next-nday-week-command n))
      EOL)
-    ;; ;; time header
-    ;; (insert (cfw:rt (cfw:render-right time-width "Time")
-    ;;                        'default))
-    ;; ;; day names
-    ;; (calfw-blocks-render-day-of-week-names model param)
     (insert cline)
     ;; contents
     (calfw-blocks-render-calendar-cells-transpose-weeks
@@ -283,14 +262,7 @@ return an alist of rendering parameters."
   (let ((all-days (apply 'nconc (cfw:k 'weeks model))))
     (calfw-blocks-render-calendar-cells-transpose-days model param title-func all-days
                                                        'calfw-blocks-render-content
-                                                       t))
-  ;; (cl-loop for week in (cfw:k 'weeks model) do
-  ;;       ;; (setq week (list (nth 4 week)))
-  ;;       ;; (print week)
-  ;;       (calfw-blocks-render-calendar-cells-transpose-days model param title-func week
-  ;;                                                'calfw-blocks-render-content
-  ;;                                                t))
-  )
+                                                       t)))
 
 
 (defun calfw-blocks-render-calendar-cells-transpose-days (model param title-func &optional
@@ -310,7 +282,7 @@ return an alist of rendering parameters."
          for date in days ; days columns loop
          for count from 0 below (length days)
          for hday         = (car (cfw:contents-get date holidays))
-         for week-day     = (nth count headers)
+         for week-day     = (nth (% count 7) headers)
          for ant          = (cfw:rt (cfw:contents-get date annotations)
                                     'cfw:face-annotation)
          for raw-periods  = (cfw:contents-get date raw-periods-all)
@@ -331,6 +303,8 @@ return an alist of rendering parameters."
                      ;; " " ; margin
                      (funcall title-func date week-day hday)
                      (if num-label (concat " " num-label)))
+         ;; separate holiday from rest of days in transposed view,
+         ;; so it can be put on a new line
          for hday-str = (if hday (cfw:rt (substring hday 0)
                                                   'cfw:face-holiday))
          collect
@@ -346,121 +320,69 @@ return an alist of rendering parameters."
             for beginp = (equal date begin)
             for endp = (equal date end)
             for width = (- cell-width 2)
-            for begintime = (if interval (calfw-blocks-time-list-to-string (car interval)))
-            for endtime = (if interval (calfw-blocks-time-list-to-string (cdr interval)))
-            for title = (if (and begintime
-                                 (string= (substring content 0 5) begintime))
-                            (concat begintime "-" endtime (substring content 5))
-                          content)
-                          ;; begintime "-" endtime
-                          ;; (cfw:strtime begin) " - "
-                          ;; (cfw:strtime end) " : "
+            for begintime = (if interval (calfw-blocks-format-time (car interval)))
+            for endtime = (if interval (calfw-blocks-format-time (cdr interval)))
+            for beginday = (cfw:strtime begin)
+            for endday = (cfw:strtime end)
+            for title =
+            (concat (if (not (string= beginday endday))
+                        (concat beginday "-" endday " "))
+                    (if (and begintime
+                             (string= (substring content 0 5) begintime))
+                        (concat begintime "-" endtime (substring content 5))
+                      content))
             collect
             (if content
                 (cfw:render-default-content-face title)
-                ;; (cfw:rt
-                ;;  title
-                ;;  (cfw:render-get-face-period content 'cfw:face-periods)
-                ;;  )
               "")))))
-
-(defun calfw-blocks-time-list-to-string (time-list)
-  (let ((hour (car time-list))
-        (minute (cadr time-list)))
-    (format "%02i:%02i" hour minute)))
-
-;; (defun calfw-blocks-render-transpose-periods (date week-day periods-stack cell-width)
-;;   "[internal] This function translates PERIOD-STACK to display content on the DATE."
-;;   (cl-loop
-;;         for (row (begin end content props)) in (sort periods-stack
-;;                                                      (lambda (a b)
-;;                                                        (< (car a) (car b))))
-;;         ;; do
-;;         ;; (setq prev-row row)
-;;         ;; for beginp = (equal date begin)
-;;         ;; for endp   = (equal date end)
-;;         ;; for width  = (- cell-width (if beginp 1 0) (if endp 1 0))
-;;         ;; for title  = (cfw:render-periods-title
-;;         ;;               date week-day begin end content cell-width)
-;;         collect
-;;         (apply 'propertize
-;;                ;; content
-;;                (cfw:render-left cell-width
-;;                                 (cfw:render-periods-title date week-day begin end content cell-width))
-;;                ;; (cfw:render-left cell-width width title)
-;;                ;; (concat (when beginp cfw:fstring-period-start)
-;;                ;;         (cfw:render-left width title ?-)
-;;                ;;         (when endp cfw:fstring-period-end))
-;;                ;; 'face (cfw:render-get-face-period content 'cfw:face-periods)
-;;                ;; 'font-lock-face (cfw:render-get-face-period content 'cfw:face-periods)
-;;                ;; 'cfw:period t
-;;                props)
-;;         )
-;;   )
-
 
 (defun calfw-blocks-render-columns-transpose (day-columns param)
   "[internal] This function concatenates each rows on the days into a string of a physical line.
 DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (DAY-TITLE . ANNOTATION-TITLE) STRING STRING...)."
-  (let* (
-        (date-cell-width  (cfw:k 'date-cell-width  param))
-        (cell-width  (cfw:k 'cell-width  param))
-        (cell-height (cfw:k 'cell-height param))
-        (EOL (cfw:k 'eol param)) (VL (cfw:k 'vl param))
-        (hline (cfw:k 'hline param)) (cline (cfw:k 'cline param))
-        (num-days (length day-columns))
-        (first-half (seq-subseq day-columns 0 (/ num-days 2)))
-        (second-half (seq-subseq day-columns (/ num-days 2) num-days))
-        )
-    ;; day title
-    ;; (loop for day-rows in day-columns
-          ;; for date = (car day-rows)
-          ;; for (tday . ant) = (cadr day-rows)
-          ;; do
-    ;;       (insert
-    ;;        VL (if date
-                  ;; (cfw:tp
-                  ;;  (cfw:render-default-content-face
-                  ;;   (cfw:render-add-right cell-width tday ant)
-                  ;;   'cfw:face-day-title)
-                  ;;  'cfw:date date)
-    ;; ;;             (cfw:render-left cell-width ""))))
+  (let* ((date-cell-width  (cfw:k 'date-cell-width  param))
+         (cell-width  (cfw:k 'cell-width  param))
+         (cell-height (cfw:k 'cell-height param))
+         (EOL (cfw:k 'eol param)) (VL (cfw:k 'vl param))
+         (hline (cfw:k 'hline param)) (cline (cfw:k 'cline param))
+         (num-days (length day-columns))
+         (first-half (seq-subseq day-columns 0 (/ num-days 2)))
+         (second-half (seq-subseq day-columns (/ num-days 2) num-days)))
     (loop for j from 0 below (/ num-days 2)
           for day1 = (nth j first-half)
           for day2 = (nth j second-half)
           do
           (loop with breaked-day-columns =
                 (loop for day-rows in `(,day1 ,day2)
-                        for date = (car day-rows)
-                        for line = (cddr day-rows)
-                        collect
-                        (cons date (cfw:render-break-lines
-                                line cell-width cell-height)))
+                      for date = (car day-rows)
+                      for line = (cddr day-rows)
+                      collect
+                      (cons date (cfw:render-break-lines
+                                  line cell-width cell-height)))
                 with breaked-date-columns =
-                     (loop for day-rows in `(,day1 ,day2)
-                        for date = (car day-rows)
-                        for dayname = (aref calendar-day-name-array
-                                            (calendar-day-of-week date))
-                        for (tday . (ant . hday)) = (cadr day-rows)
-                           collect
-                           (cons date (cfw:render-break-lines
-                                        (list
-                                         (cfw:tp
-                                          (cfw:render-default-content-face
-                                           (concat
-                                                   (substring dayname 0 calfw-blocks-transpose-day-name-length)
-                                                   " "
-                                                   tday)
-                                           'cfw:face-day-title)
-                                         'cfw:date date)
-                                         hday) date-cell-width cell-height)))
+                (loop for day-rows in `(,day1 ,day2)
+                      for date = (car day-rows)
+                      for dayname = (aref calendar-day-name-array
+                                          (calendar-day-of-week date))
+                      for (tday . (ant . hday)) = (cadr day-rows)
+                      collect
+                      (cons date (cfw:render-break-lines
+                                  (list
+                                   (cfw:tp
+                                    (cfw:render-default-content-face
+                                     (concat
+                                      (substring dayname 0 calfw-blocks-transpose-day-name-length)
+                                      " "
+                                      tday)
+                                     'cfw:face-day-title)
+                                    'cfw:date date)
+                                   hday) date-cell-width cell-height)))
                 with max-height = (max 2
                                        (length (cdr (nth 0 breaked-day-columns)))
                                        (length (cdr (nth 1 breaked-day-columns)))
                                        (length (cdr (nth 0 breaked-date-columns)))
                                        (length (cdr (nth 1 breaked-date-columns))))
-
-                for i from 1 to max-height do
+                for i from 1 to max-height
+                do
                 (loop for k from 0 to 1
                       for day-rows = (nth k breaked-day-columns)
                       for date-rows = (nth k breaked-date-columns)
@@ -470,7 +392,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                       do
                       (insert
                        VL (cfw:tp
-                            (cfw:render-left date-cell-width (and date-row (format "%s" date-row)))
+                           (cfw:render-left date-cell-width (and date-row (format "%s" date-row)))
                            'cfw:date date))
                       (insert
                        VL (cfw:tp
@@ -478,8 +400,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                             (cfw:render-left cell-width (and row (format "%s" row))))
                            'cfw:date date)))
                 (insert VL EOL))
-          (insert cline)
-          )
+          (insert cline))
     (insert EOL)))
 
 (advice-add 'cfw:cp-dispatch-view-impl :override 'calfw-blocks-cp-dispatch-view-impl)
@@ -584,6 +505,11 @@ return an alist of rendering parameters."
 
 (defun calfw-blocks-view-transpose-14-day (component)
   (calfw-blocks-view-transpose-nday-week 14 component))
+
+(defun calfw-blocks-view-transpose-two-weeks (component)
+  (calfw-blocks-view-transpose-nday-week 14 component
+                                         (cfw:view-two-weeks-model
+                                          (cfw:component-model component))))
 
 (defun calfw-blocks-view-block-week (component)
   (calfw-blocks-view-block-nday-week 7 component
@@ -714,6 +640,12 @@ command, such as `cfw:navi-previous(next)-month-command' and
 
 (advice-add 'cfw:render-toolbar :override 'calfw-blocks-render-toolbar)
 
+(defun calfw-blocks-change-view-transpose-two-weeks ()
+  "change-view-month"
+  (interactive)
+  (when (cfw:cp-get-component)
+    (cfw:cp-set-view (cfw:cp-get-component) 'transpose-two-weeks)))
+
 (defun calfw-blocks-change-view-transpose-14-day ()
   "change-view-month"
   (interactive)
@@ -784,7 +716,7 @@ command, such as `cfw:navi-previous(next)-month-command' and
          for hday         = (car (cfw:contents-get date holidays))
          ;; for hday = (if (stringp hday) (list hday) hday)
          ;; for prs-hday = (if hday (mapcar (lambda (h) (cfw:rt h 'cfw:face-holiday)) hday))
-         for week-day     = (nth count headers)
+         for week-day     = (nth (% count 7) headers)
          for ant          = (cfw:rt (cfw:contents-get date annotations)
                                     'cfw:face-annotation)
          for raw-periods  = (cfw:contents-get date raw-periods-all)
@@ -887,10 +819,17 @@ b is the minute."
   (mapcar (lambda (p)
             (let* ((content (nth 2 (cadr p)))
                   (props (nth 3 (cadr p)))
-                  (interval (nth 4 (cadr p))))
+                  (interval (nth 4 (cadr p)))
+                  (begintime (if interval (calfw-blocks-format-time (car interval))))
+                  (endtime (if interval (calfw-blocks-format-time (cdr interval)))))
           (if (or interval (cfw:org-tp content 'calfw-blocks-interval)
                   (not calfw-blocks-render-multiday-events))
-              (apply 'propertize content
+              (apply 'propertize
+                     (if (and calfw-blocks-display-end-times
+                              begintime
+                              (string= (substring content 0 5) begintime))
+                         (concat begintime "-" endtime (substring content 5))
+                       content)
                           'face (cfw:render-get-face-period content 'cfw:face-periods)
                           'font-lock-face (cfw:render-get-face-period content 'cfw:face-periods)
                           'cfw:period t
