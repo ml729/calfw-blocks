@@ -81,7 +81,7 @@ Modus Vivendi's colors for graphs."
 (defcustom calfw-blocks-display-end-times t
   "Whether or not to display end times in blocks.")
 
-(defcustom calfw-blocks-transpose-date-width 15
+(defcustom calfw-blocks-transpose-date-width 17
   "Width (in characters) of date cell in transpose views.")
 
 (defcustom calfw-blocks-transpose-day-name-length nil
