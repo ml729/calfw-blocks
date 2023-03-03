@@ -206,7 +206,7 @@ return an alist of rendering parameters."
        ;; (cell-width  (cfw:round-cell-width
        ;;               (max 5 (* 7 (/ (- win-width junctions-width) 16)))))
        (cell-width (/ (- win-width junctions-width (* 2 date-cell-width)) 2))
-       (cell-height win-width)
+       (cell-height win-height)
        ;; (cell-height (max 2 (/ win-height (/ n 2))))
        (total-width (+ (* date-cell-width 2) (* cell-width 2) junctions-width)))
     `((cell-width . ,cell-width)
@@ -304,7 +304,7 @@ return an alist of rendering parameters."
          with holidays        = (cfw:k 'holidays model)
          with annotations     = (cfw:k 'annotations model)
          with headers         = (cfw:k 'headers  model)
-         with raw-periods-all = (cfw:render-periods-stacks model)
+         with raw-periods-all = (calfw-blocks-render-periods-stacks model)
          with sorter          = (cfw:model-get-sorter model)
 
          for date in days ; days columns loop
@@ -319,11 +319,8 @@ return an alist of rendering parameters."
                                       (cfw:model-get-contents-by-date date model))
                              sorter)
          for prs-contents = (cfw:render-rows-prop
-                             (append (if do-weeks
-                                         (cfw:render-periods
-                                          date week-day raw-periods cell-width)
-                                       (cfw:render-periods-days
-                                        date raw-periods cell-width))
+                             (append (calfw-blocks-render-transpose-periods-days
+                                      date raw-periods cell-width)
                                      (mapcar 'cfw:render-default-content-face
                                              raw-contents)))
          for num-label = (if prs-contents
@@ -339,6 +336,68 @@ return an alist of rendering parameters."
          collect
          (cons date (cons (cons tday ant) prs-contents)))
    param))
+
+(defun calfw-blocks-render-transpose-periods-days (date periods-stack cell-width)
+  "[internal] Insert period texts."
+  (when periods-stack
+    (let ((stack (sort (copy-sequence periods-stack)
+                       (lambda (a b) (< (car a) (car b))))))
+      (loop for (row (begin end content props interval)) in stack
+            for beginp = (equal date begin)
+            for endp = (equal date end)
+            for width = (- cell-width 2)
+            for begintime = (if interval (calfw-blocks-time-list-to-string (car interval)))
+            for endtime = (if interval (calfw-blocks-time-list-to-string (cdr interval)))
+            for title = (if (and begintime
+                                 (string= (substring content 0 5) begintime))
+                            (concat begintime "-" endtime (substring content 5))
+                          content)
+                          ;; begintime "-" endtime
+                          ;; (cfw:strtime begin) " - "
+                          ;; (cfw:strtime end) " : "
+            collect
+            (if content
+                (cfw:render-default-content-face title)
+                ;; (cfw:rt
+                ;;  title
+                ;;  (cfw:render-get-face-period content 'cfw:face-periods)
+                ;;  )
+              "")))))
+
+(defun calfw-blocks-time-list-to-string (time-list)
+  (let ((hour (car time-list))
+        (minute (cadr time-list)))
+    (format "%02i:%02i" hour minute)))
+
+;; (defun calfw-blocks-render-transpose-periods (date week-day periods-stack cell-width)
+;;   "[internal] This function translates PERIOD-STACK to display content on the DATE."
+;;   (cl-loop
+;;         for (row (begin end content props)) in (sort periods-stack
+;;                                                      (lambda (a b)
+;;                                                        (< (car a) (car b))))
+;;         ;; do
+;;         ;; (setq prev-row row)
+;;         ;; for beginp = (equal date begin)
+;;         ;; for endp   = (equal date end)
+;;         ;; for width  = (- cell-width (if beginp 1 0) (if endp 1 0))
+;;         ;; for title  = (cfw:render-periods-title
+;;         ;;               date week-day begin end content cell-width)
+;;         collect
+;;         (apply 'propertize
+;;                ;; content
+;;                (cfw:render-left cell-width
+;;                                 (cfw:render-periods-title date week-day begin end content cell-width))
+;;                ;; (cfw:render-left cell-width width title)
+;;                ;; (concat (when beginp cfw:fstring-period-start)
+;;                ;;         (cfw:render-left width title ?-)
+;;                ;;         (when endp cfw:fstring-period-end))
+;;                ;; 'face (cfw:render-get-face-period content 'cfw:face-periods)
+;;                ;; 'font-lock-face (cfw:render-get-face-period content 'cfw:face-periods)
+;;                ;; 'cfw:period t
+;;                props)
+;;         )
+;;   )
+
 
 (defun calfw-blocks-render-columns-transpose (day-columns param)
   "[internal] This function concatenates each rows on the days into a string of a physical line.
@@ -372,16 +431,16 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
           for line1 = (cddr day1)
           for breaked-day1 =
           (cons date1 (cfw:render-break-lines
-                      line1 cell-width (1- cell-height)))
+                      line1 cell-width cell-height))
 
           for day2 = (nth j second-half)
           for date2 = (car day2)
           for line2 = (cddr day2)
           for breaked-day2 =
           (cons date2 (cfw:render-break-lines
-                      line2 cell-width (1- cell-height)))
-          for max-height = (max 5 (max (length (cdr breaked-day1))
-                                 (length (cdr breaked-day2))))
+                      line2 cell-width cell-height))
+          ;; for max-height = (max 5 (max (length (cdr breaked-day1))
+          ;;                              (length (cdr breaked-day2))))
           do
           (loop with breaked-day-columns = `(,breaked-day1 ,breaked-day2)
                 with breaked-date-columns =
@@ -406,11 +465,15 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                                                    " "
                                                    tday)
                                            'cfw:face-day-title)
-                                         'cfw:date date)) date-cell-width max-height
-                                 )))
+                                         'cfw:date date)) date-cell-width cell-height)))
+                with max-height = (max 2
+                                       (length (cdr breaked-day1))
+                                       (length (cdr breaked-day2))
+                                       (length (cdr (nth 0 breaked-date-columns)))
+                                       (length (cdr (nth 1 breaked-date-columns))))
 
-                for i from 1 below max-height do
-                (loop for k from 0 below 2
+                for i from 1 to max-height do
+                (loop for k from 0 to 1
                       for day-rows = (nth k breaked-day-columns)
                       for date-rows = (nth k breaked-date-columns)
                       for date = (car day-rows)
@@ -419,8 +482,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                       do
                       (insert
                        VL (cfw:tp
-                           (cfw:render-separator
-                            (cfw:render-left date-cell-width (and date-row (format "%s" date-row))))
+                            (cfw:render-left date-cell-width (and date-row (format "%s" date-row)))
                            'cfw:date date))
                       (insert
                        VL (cfw:tp
@@ -430,8 +492,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                 (insert VL EOL))
           (insert cline)
           )
-    (insert EOL)
-    ))
+    (insert EOL)))
 
 (advice-add 'cfw:cp-dispatch-view-impl :override 'calfw-blocks-cp-dispatch-view-impl)
 
@@ -1446,6 +1507,8 @@ If TEXT does not have a range, return nil."
          (date (cfw:org-tp item 'date))
          (time-str (and time-of-day
                         (format "%02i:%02i " (/ time-of-day 100) (% time-of-day 100))))
+         (end-time-str (and end-time
+                        (format "%02i:%02i " (nth 0 end-time) (nth 1 end-time))))
          (category (cfw:org-tp item 'org-category))
          (tags (cfw:org-tp item 'tags))
          (marker (cfw:org-tp item 'org-marker))
