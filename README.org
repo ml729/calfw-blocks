@@ -1,9 +1,13 @@
 * calfw-blocks.el
 
-Visual time blocks for the [[https://github.com/kiwanami/emacs-calfw][Emacs Calendar Framework (calfw)]].
+Visual time blocks and more for the [[https://github.com/kiwanami/emacs-calfw][Emacs Calendar Framework (calfw)]].
 
 * Screenshot
+Weekly block view:
 [[screenshot.png]]
+
+Transposed two week view:
+[[screenshot-transpose.png]]
 
 * Installation
 ** Manual Installation
