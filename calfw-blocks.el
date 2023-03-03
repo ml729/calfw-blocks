@@ -330,11 +330,11 @@ return an alist of rendering parameters."
          for tday = (concat
                      ;; " " ; margin
                      (funcall title-func date week-day hday)
-                     (if num-label (concat " " num-label))
-                     (if hday (concat " " (cfw:rt (substring hday 0)
-                                                  'cfw:face-holiday))))
+                     (if num-label (concat " " num-label)))
+         for hday-str = (if hday (cfw:rt (substring hday 0)
+                                                  'cfw:face-holiday))
          collect
-         (cons date (cons (cons tday ant) prs-contents)))
+         (cons date (cons (cons tday (cons ant hday-str)) prs-contents)))
    param))
 
 (defun calfw-blocks-render-transpose-periods-days (date periods-stack cell-width)
@@ -427,36 +427,23 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
     ;; ;;             (cfw:render-left cell-width ""))))
     (loop for j from 0 below (/ num-days 2)
           for day1 = (nth j first-half)
-          for date1 = (car day1)
-          for line1 = (cddr day1)
-          for breaked-day1 =
-          (cons date1 (cfw:render-break-lines
-                      line1 cell-width cell-height))
-
           for day2 = (nth j second-half)
-          for date2 = (car day2)
-          for line2 = (cddr day2)
-          for breaked-day2 =
-          (cons date2 (cfw:render-break-lines
-                      line2 cell-width cell-height))
-          ;; for max-height = (max 5 (max (length (cdr breaked-day1))
-          ;;                              (length (cdr breaked-day2))))
           do
-          (loop with breaked-day-columns = `(,breaked-day1 ,breaked-day2)
+          (loop with breaked-day-columns =
+                (loop for day-rows in `(,day1 ,day2)
+                        for date = (car day-rows)
+                        for line = (cddr day-rows)
+                        collect
+                        (cons date (cfw:render-break-lines
+                                line cell-width cell-height)))
                 with breaked-date-columns =
                      (loop for day-rows in `(,day1 ,day2)
                         for date = (car day-rows)
                         for dayname = (aref calendar-day-name-array
                                             (calendar-day-of-week date))
-                        for (tday . ant) = (cadr day-rows)
+                        for (tday . (ant . hday)) = (cadr day-rows)
                            collect
                            (cons date (cfw:render-break-lines
-                                       ;; (concat " "
-                                       ;;         (substring dayname 0 calfw-blocks-transpose-day-name-length))
-                                        ;; (substring dayname 0 2)
-                                        ;; (cfw:rt
-                                        ;;  dayname
-                                        ;;  (cfw:render-get-week-face daynum 'cfw:face-header))
                                         (list
                                          (cfw:tp
                                           (cfw:render-default-content-face
@@ -465,10 +452,11 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
                                                    " "
                                                    tday)
                                            'cfw:face-day-title)
-                                         'cfw:date date)) date-cell-width cell-height)))
+                                         'cfw:date date)
+                                         hday) date-cell-width cell-height)))
                 with max-height = (max 2
-                                       (length (cdr breaked-day1))
-                                       (length (cdr breaked-day2))
+                                       (length (cdr (nth 0 breaked-day-columns)))
+                                       (length (cdr (nth 1 breaked-day-columns)))
                                        (length (cdr (nth 0 breaked-date-columns)))
                                        (length (cdr (nth 1 breaked-date-columns))))
 
