@@ -1,4 +1,4 @@
-;;; calfw-blocks.el -*- lexical-binding: t; -*-
+;;; calfw-blocks.el --- Visual time blocks and more for the Emacs Calendar Framework (calfw) -*- lexical-binding: t -*-
 ;;
 ;; Copyright (C) 2022 null
 ;;
@@ -6,13 +6,15 @@
 ;; Maintainer: ml729 <null>
 ;; Created: July 06, 2022
 ;; Version: 0.0.1
+;; Homepage: https://github.com/ml729/calfw-blocks
 ;; Package-Requires: ((emacs "25.4"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; Commentary:
 ;;
-;;
+;; Adds time blocks, n-day views, and transposed views to the Emacs Calendar
+;; Framework (calfw)
 ;;
 ;;; Code:
 
