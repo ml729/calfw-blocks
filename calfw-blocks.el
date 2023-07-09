@@ -1517,7 +1517,7 @@ If TEXT does not have a range, return nil."
 
 
 
-(defvar calfw-blocks-mode-map
+(defvar calfw-blocks-local-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "l"   'calfw-blocks-navi-next-day-command)
     (define-key map "h"   'calfw-blocks-navi-previous-day-command)
@@ -1525,35 +1525,49 @@ If TEXT does not have a range, return nil."
   "Keymap for `calfw-blocks-mode'.")
 
 ;;;###autoload
-(define-minor-mode calfw-blocks-mode
-  "A minor mode for adding visual time blocks to calfw.
+(define-minor-mode calfw-blocks-local-mode
+  "Local minor mode for adding visual time blocks to calfw.
 \\<calfw-blocks-mode-map>\\{calfw-blocks-mode-map}"
   ;; (setq buffer-read-only nil
   ;;       buffer-undo-list t
   ;;       indent-tabs-mode nil)
   :init-value nil
-  :lighter "calfw-blocks"
-  :global t
-  :group 'calfw-blocks
-  :keymap calfw-blocks-mode-map
-  (if calfw-blocks-mode
+  :lighter "calfw-blocks-local"
+  :keymap calfw-blocks-local-mode-map
+  (if calfw-blocks-local-mode
       (progn
-        (advice-add 'cfw:cp-dispatch-view-impl
-                    :override #'calfw-blocks-cp-dispatch-view-impl)
         (advice-add 'cfw:render-toolbar :override #'calfw-blocks-render-toolbar)
         (advice-add 'cfw:open-calendar-buffer :after #'calfw-blocks-scroll-to-initial-visible-time)
         (advice-add 'cfw:cp-update :after #'calfw-blocks-scroll-to-initial-visible-time-after-update)
         (advice-add 'cfw:cp-update :override #'calfw-blocks-cp-update)
         (advice-add 'cfw:org-get-timerange :override #'calfw-blocks-org-get-timerange)
         )
-    (advice-remove 'cfw:cp-dispatch-view-impl
-                   #'calfw-blocks-cp-dispatch-view-impl))
   (advice-remove 'cfw:render-toolbar #'calfw-blocks-render-toolbar)
   (advice-remove 'cfw:open-calendar-buffer #'calfw-blocks-scroll-to-initial-visible-time)
   (advice-remove 'cfw:cp-update #'calfw-blocks-scroll-to-initial-visible-time-after-update)
   (advice-remove 'cfw:cp-update #'calfw-blocks-cp-update)
-  (advice-remove 'cfw:org-get-timerange #'calfw-blocks-org-get-timerange))
+  (advice-remove 'cfw:org-get-timerange #'calfw-blocks-org-get-timerange)))
 
+
+(defun calfw-blocks-local-turn-on ()
+  (calfw-blocks-local-mode +1))
+
+;;;###autoload
+(define-minor-mode calfw-blocks-mode
+    "A minor mode for adding visual time blocks to calfw."
+  :init-value nil
+  :lighter "calfw-blocks"
+  :global t
+  :group 'calfw-blocks
+  (if calfw-blocks-mode
+      (progn
+        (advice-add 'cfw:cp-dispatch-view-impl
+                    :override #'calfw-blocks-cp-dispatch-view-impl)
+        (add-hook 'cfw:calendar-mode-hook #'calfw-blocks-local-turn-on)
+        )
+    (advice-remove 'cfw:cp-dispatch-view-impl
+                   #'calfw-blocks-cp-dispatch-view-impl)
+    (remove-hook 'cfw:calendar-mode-hook #'calfw-blocks-local-turn-on)))
 
 
 (provide 'calfw-blocks)
