@@ -542,10 +542,13 @@ return an alist of rendering parameters."
     ;; update model
     (setf (cfw:component-model component) model)
     (setq calfw-blocks-header-line-string (concat
-                                           "  Time"
+                                           "   " (substring (aref calendar-month-name-array (1- (calendar-extract-month begin-date)))
+                                                               0 3)
+                                           ;; (number-to-string (% (calendar-extract-year begin-date) 1000))
                                            (cl-loop for i in (cfw:k 'headers model)
                                                  with VL = (cfw:k 'vl param) with cell-width = (cfw:k 'cell-width param)
-                                                 for name = (aref calendar-day-name-array i)
+                                                 for name = (concat (aref calendar-day-name-array i) " " (number-to-string
+                                                                                                          (nth 1 (cfw:date-after begin-date i))))
                                                  concat
                                                  (concat VL (cfw:rt (cfw:render-center cell-width name)
                                                                     (cfw:render-get-week-face i 'cfw:face-header))))))
