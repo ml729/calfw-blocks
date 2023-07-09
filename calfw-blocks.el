@@ -1392,7 +1392,8 @@ is added at the beginning of a block to indicate it is the beginning."
       (cfw:cp-set-selected-date
        component (cfw:component-selected component))
       (cfw:dest-after-update dest)
-      (cfw:cp-fire-update-hooks component))))
+      (cfw:cp-fire-update-hooks component)))
+  (calfw-blocks-scroll-to-initial-visible-time-after-update component))
 
 ;; (advice-add 'cfw:cp-update :override #'calfw-blocks-cp-update)
 
@@ -1538,13 +1539,13 @@ If TEXT does not have a range, return nil."
       (progn
         (advice-add 'cfw:render-toolbar :override #'calfw-blocks-render-toolbar)
         (advice-add 'cfw:open-calendar-buffer :after #'calfw-blocks-scroll-to-initial-visible-time)
-        (advice-add 'cfw:cp-update :after #'calfw-blocks-scroll-to-initial-visible-time-after-update)
+        ;; (advice-add 'cfw:cp-update :after #'calfw-blocks-scroll-to-initial-visible-time-after-update)
         (advice-add 'cfw:cp-update :override #'calfw-blocks-cp-update)
         (advice-add 'cfw:org-get-timerange :override #'calfw-blocks-org-get-timerange)
         )
   (advice-remove 'cfw:render-toolbar #'calfw-blocks-render-toolbar)
   (advice-remove 'cfw:open-calendar-buffer #'calfw-blocks-scroll-to-initial-visible-time)
-  (advice-remove 'cfw:cp-update #'calfw-blocks-scroll-to-initial-visible-time-after-update)
+  ;; (advice-remove 'cfw:cp-update #'calfw-blocks-scroll-to-initial-visible-time-after-update)
   (advice-remove 'cfw:cp-update #'calfw-blocks-cp-update)
   (advice-remove 'cfw:org-get-timerange #'calfw-blocks-org-get-timerange)))
 
