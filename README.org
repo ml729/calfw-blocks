@@ -80,6 +80,13 @@ Notable customization options:
 - ~calfw-blocks-lines-per-hour~: how many lines each hour gets.
 - ~calfw-blocks-min-block-width~: the smallest width a block can be in characters (includes divider character). If there are too many concurrent events, some events are hidden so that all blocks are at least `calfw-blocks-min-block-width' characters wide.
 
+* Known Issues
+Does not currently handle multiday events with times on both the start and end dates, such as:
+#+begin_example
+SCHEDULED: <2023-07-06 Thu 19:00>--<2023-07-07 Fri 5:00>
+#+end_example
+
+
 
 * License
 GNU General Public License v3.0 (GPLv3)
