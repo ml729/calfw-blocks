@@ -406,7 +406,7 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
           (insert cline))
     (insert EOL)))
 
-(advice-add 'cfw:cp-dispatch-view-impl :override 'calfw-blocks-cp-dispatch-view-impl)
+;; (advice-add 'cfw:cp-dispatch-view-impl :override 'calfw-blocks-cp-dispatch-view-impl)
 
 
 
@@ -643,7 +643,7 @@ command, such as `cfw:navi-previous(next)-month-command' and
            (concat day sp 3day sp week sp tweek sp transpose-week sp transpose-two-week sp month sp))))
     (cfw:render-default-content-face toolbar-text 'cfw:face-toolbar)))
 
-(advice-add 'cfw:render-toolbar :override 'calfw-blocks-render-toolbar)
+;; (advice-add 'cfw:render-toolbar :override 'calfw-blocks-render-toolbar)
 
 (defun calfw-blocks-change-view-transpose-two-weeks ()
   "change-view-month"
@@ -680,18 +680,20 @@ command, such as `cfw:navi-previous(next)-month-command' and
   ""
   (interactive)
   (when (cfw:cp-get-component)
-    (advice-add 'cfw:dest-ol-today-set :override 'calfw-blocks-dest-ol-today-set)
+    ;; (advice-add 'cfw:dest-ol-today-set :override 'calfw-blocks-dest-ol-today-set)
     (cfw:cp-set-view (cfw:cp-get-component) (alist-get n calfw-blocks-nday-views-alist))
-    (advice-remove 'cfw:dest-ol-today-set 'calfw-blocks-dest-ol-today-set)))
+    ;; (advice-remove 'cfw:dest-ol-today-set 'calfw-blocks-dest-ol-today-set)
+    ))
 
 
 (defun calfw-blocks-change-view-block-week ()
   "change-view-week"
   (interactive)
   (when (cfw:cp-get-component)
-    (advice-add 'cfw:dest-ol-today-set :override 'calfw-blocks-dest-ol-today-set)
+    ;; (advice-add 'cfw:dest-ol-today-set :override 'calfw-blocks-dest-ol-today-set)
     (cfw:cp-set-view (cfw:cp-get-component) 'block-week)
-    (advice-remove 'cfw:dest-ol-today-set 'calfw-blocks-dest-ol-today-set)))
+    ;; (advice-remove 'cfw:dest-ol-today-set 'calfw-blocks-dest-ol-today-set)
+    ))
 
 (defun calfw-blocks-render-calendar-cells-block-weeks (model param title-func)
   "[internal] Insert calendar cells for week based views."
@@ -1370,7 +1372,7 @@ is added at the beginning of a block to indicate it is the beginning."
 (defvar cfw:highlight-today t
   "Variable to control whether today is rendered differently than other days.")
 
-(defun cfw:cp-update (component)
+(defun calfw-blocks-cp-update (component)
   "[internal] Clear and re-draw the component content."
   (let* ((buf (cfw:cp-get-buffer component))
          (dest (cfw:component-dest component)))
@@ -1392,6 +1394,7 @@ is added at the beginning of a block to indicate it is the beginning."
       (cfw:dest-after-update dest)
       (cfw:cp-fire-update-hooks component))))
 
+;; (advice-add 'cfw:cp-update :override #'calfw-blocks-cp-update)
 
 
 (cl-defun calfw-blocks-scroll-to-initial-visible-time (&key date buffer custom-map contents-sources annotation-sources view sorter)
@@ -1405,8 +1408,8 @@ is added at the beginning of a block to indicate it is the beginning."
       (scroll-up-line (floor (* calfw-blocks-lines-per-hour
                                 (calfw-blocks--time-pair-to-float calfw-blocks-initial-visible-time)))))))
 
-(advice-add 'cfw:open-calendar-buffer :after 'calfw-blocks-scroll-to-initial-visible-time)
-(advice-add 'cfw:cp-update :after 'calfw-blocks-scroll-to-initial-visible-time-after-update)
+;; (advice-add 'cfw:open-calendar-buffer :after 'calfw-blocks-scroll-to-initial-visible-time)
+;; (advice-add 'cfw:cp-update :after 'calfw-blocks-scroll-to-initial-visible-time-after-update)
 
 (defun calfw-blocks-navi-next-day-command (&optional num)
   "Move the cursor forward NUM days. If NUM is nil, 1 is used.
@@ -1427,7 +1430,7 @@ Moves forward if NUM is negative."
 
 
 
-(defun cfw:org-get-timerange (text)
+(defun calfw-blocks-org-get-timerange (text)
   "Return a range object (begin end text).
 If TEXT does not have a range, return nil."
   (let* ((dotime (cfw:org-tp text 'dotime)))
@@ -1447,6 +1450,10 @@ If TEXT does not have a range, return nil."
                  (list (calendar-gregorian-from-absolute (time-to-days start-date))
                        (calendar-gregorian-from-absolute (time-to-days end-date)) text)))
            ))))
+
+;; (advice-add 'cfw:org-get-timerange :override #'calfw-blocks-org-get-timerange)
+
+
 
 (defun calfw-blocks-org-summary-format (item)
   "Version of cfw:org-summary-format that adds time data needed to draw blocks."
@@ -1506,6 +1513,46 @@ If TEXT does not have a range, return nil."
      'display nil
      'calfw-blocks-interval (if start-time (cons start-time end-time)))))
 (setq cfw:org-schedule-summary-transformer 'calfw-blocks-org-summary-format)
+
+
+
+
+(defvar calfw-blocks-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "l"   'calfw-blocks-navi-next-day-command)
+    (define-key map "h"   'calfw-blocks-navi-previous-day-command)
+    map)
+  "Keymap for `calfw-blocks-mode'.")
+
+;;;###autoload
+(define-minor-mode calfw-blocks-mode
+  "A minor mode for adding visual time blocks to calfw.
+\\<calfw-blocks-mode-map>\\{calfw-blocks-mode-map}"
+  ;; (setq buffer-read-only nil
+  ;;       buffer-undo-list t
+  ;;       indent-tabs-mode nil)
+  :init-value nil
+  :lighter "calfw-blocks"
+  :global t
+  :group 'calfw-blocks
+  :keymap calfw-blocks-mode-map
+  (if calfw-blocks-mode
+      (progn
+        (advice-add 'cfw:cp-dispatch-view-impl
+                    :override #'calfw-blocks-cp-dispatch-view-impl)
+        (advice-add 'cfw:render-toolbar :override #'calfw-blocks-render-toolbar)
+        (advice-add 'cfw:open-calendar-buffer :after #'calfw-blocks-scroll-to-initial-visible-time)
+        (advice-add 'cfw:cp-update :after #'calfw-blocks-scroll-to-initial-visible-time-after-update)
+        (advice-add 'cfw:cp-update :override #'calfw-blocks-cp-update)
+        (advice-add 'cfw:org-get-timerange :override #'calfw-blocks-org-get-timerange)
+        )
+    (advice-remove 'cfw:cp-dispatch-view-impl
+                   #'calfw-blocks-cp-dispatch-view-impl))
+  (advice-remove 'cfw:render-toolbar #'calfw-blocks-render-toolbar)
+  (advice-remove 'cfw:open-calendar-buffer #'calfw-blocks-scroll-to-initial-visible-time)
+  (advice-remove 'cfw:cp-update #'calfw-blocks-scroll-to-initial-visible-time-after-update)
+  (advice-remove 'cfw:cp-update #'calfw-blocks-cp-update)
+  (advice-remove 'cfw:org-get-timerange #'calfw-blocks-org-get-timerange))
 
 
 
