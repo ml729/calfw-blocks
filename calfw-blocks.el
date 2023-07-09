@@ -545,7 +545,8 @@ return an alist of rendering parameters."
                                            "  Time"
                                            (cl-loop for i in (cfw:k 'headers model)
                                                  with VL = (cfw:k 'vl param) with cell-width = (cfw:k 'cell-width param)
-                                                 for name = (aref calendar-day-name-array i)
+                                                 for name = (concat (aref calendar-day-name-array i) " " (number-to-string
+                                                                                                          (nth 1 (cfw:date-after begin-date i))))
                                                  concat
                                                  (concat VL (cfw:rt (cfw:render-center cell-width name)
                                                                     (cfw:render-get-week-face i 'cfw:face-header))))))
