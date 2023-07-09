@@ -408,6 +408,8 @@ DAY-COLUMNS is a list of columns. A column is a list of following form: (DATE (D
 
 (advice-add 'cfw:cp-dispatch-view-impl :override 'calfw-blocks-cp-dispatch-view-impl)
 
+
+
 ;; Block views
 
 (defun calfw-blocks-view-block-nday-week-model (n model)
@@ -584,8 +586,8 @@ return an alist of rendering parameters."
   "Move the cursor forward NUM weeks. If NUM is nil, 1 is used.
 Moves backward if NUM is negative."
   (lambda (&optional num)
-  (interactive "p")
-  (cfw:navi-next-day-command (* n (or num 1)))))
+    (interactive "p")
+    (cfw:navi-next-day-command (* n (or num 1)))))
 
 (defun calfw-blocks-navi-previous-nday-week-command (n)
   "Move the cursor back NUM weeks. If NUM is nil, 1 is used.
@@ -1390,6 +1392,8 @@ is added at the beginning of a block to indicate it is the beginning."
       (cfw:dest-after-update dest)
       (cfw:cp-fire-update-hooks component))))
 
+
+
 (cl-defun calfw-blocks-scroll-to-initial-visible-time (&key date buffer custom-map contents-sources annotation-sources view sorter)
   (when (string-match-p "block" (symbol-name view))
     (scroll-up-line (floor (* calfw-blocks-lines-per-hour
@@ -1403,6 +1407,25 @@ is added at the beginning of a block to indicate it is the beginning."
 
 (advice-add 'cfw:open-calendar-buffer :after 'calfw-blocks-scroll-to-initial-visible-time)
 (advice-add 'cfw:cp-update :after 'calfw-blocks-scroll-to-initial-visible-time-after-update)
+
+(defun calfw-blocks-navi-next-day-command (&optional num)
+  "Move the cursor forward NUM days. If NUM is nil, 1 is used.
+Moves backward if NUM is negative."
+  (interactive "p")
+  (when (cfw:cp-get-component)
+    (unless num (setq num 1))
+    (let* ((cursor-date (cfw:cp-get-selected-date (cfw:cp-get-component)))
+           (new-cursor-date (cfw:date-after cursor-date num)))
+      (cfw:navi-goto-date new-cursor-date))
+    (calfw-blocks-scroll-to-initial-visible-time-after-update (cfw:cp-get-component))))
+
+(defun calfw-blocks-navi-previous-day-command (&optional num)
+  "Move the cursor back NUM days. If NUM is nil, 1 is used.
+Moves forward if NUM is negative."
+  (interactive "p")
+  (calfw-blocks-navi-next-day-command (- (or num 1))))
+
+
 
 (defun cfw:org-get-timerange (text)
   "Return a range object (begin end text).
