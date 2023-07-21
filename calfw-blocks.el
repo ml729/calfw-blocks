@@ -1405,8 +1405,9 @@ is added at the beginning of a block to indicate it is the beginning."
 (cl-defun calfw-blocks-scroll-to-initial-visible-time-after-update (component)
   (let ((view (cfw:component-view component)))
     (when (string-match-p "block" (symbol-name view))
-      (scroll-up-line (floor (* calfw-blocks-lines-per-hour
-                                (calfw-blocks--time-pair-to-float calfw-blocks-initial-visible-time)))))))
+      (when (string= (buffer-name) cfw:calendar-buffer-name)
+        (scroll-up-line (floor (* calfw-blocks-lines-per-hour
+                                  (calfw-blocks--time-pair-to-float calfw-blocks-initial-visible-time))))))))
 
 (advice-add 'cfw:open-calendar-buffer :after 'calfw-blocks-scroll-to-initial-visible-time)
 (advice-add 'cfw:cp-update :after 'calfw-blocks-scroll-to-initial-visible-time-after-update)
