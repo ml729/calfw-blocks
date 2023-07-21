@@ -1,0 +1,4 @@
+#+title: calfw-blocks.el - Change Log
+
+* Version 0.2 (2023-07-21)
+- [Breaking] Created a global major mode that activates/deactivates advices. This must be turned on to use `calfw-blocks`.

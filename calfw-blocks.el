@@ -5,7 +5,7 @@
 ;; Author: ml729
 ;; Maintainer: ml729 <null>
 ;; Created: July 06, 2022
-;; Version: 0.0.1
+;; Version: 0.2
 ;; Homepage: https://github.com/ml729/calfw-blocks
 ;; Package-Requires: ((emacs "25.4"))
 ;;

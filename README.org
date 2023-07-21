@@ -27,6 +27,12 @@ And add its path to `'load-path':
 Make sure this package is loaded after calfw.
 
 * Usage
+After installing, make sure to turn on `calfw-blocks-mode` in your .emacs.d. This makes sure that `calfw-blocks` views will automatically be enabled when using `calfw`. For instance, you can add:
+#+begin_src emacs lisp
+(calfw-blocks-mode 1)
+#+end_src
+Disabling the mode will disable `calfw-blocks` features.
+
 This package comes with the following ~calfw~ views that display time blocks:
 #+begin_src
 'block-day
