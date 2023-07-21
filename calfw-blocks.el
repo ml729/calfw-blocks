@@ -1368,7 +1368,8 @@ is added at the beginning of a block to indicate it is the beginning."
                (overlay-put overlay 'face
                             'cfw:face-today-title))
            (push overlay ols)))))
-    (setf (cfw:dest-today-ol dest) ols)))
+    (setf (cfw:dest-today-ol dest) ols))
+  )
 
 (defvar cfw:highlight-today t
   "Variable to control whether today is rendered differently than other days.")
@@ -1514,7 +1515,6 @@ If TEXT does not have a range, return nil."
      ;; table layout.
      'display nil
      'calfw-blocks-interval (if start-time (cons start-time end-time)))))
-(setq cfw:org-schedule-summary-transformer 'calfw-blocks-org-summary-format)
 
 
 
@@ -1544,11 +1544,11 @@ If TEXT does not have a range, return nil."
         (advice-add 'cfw:cp-update :override #'calfw-blocks-cp-update)
         (advice-add 'cfw:org-get-timerange :override #'calfw-blocks-org-get-timerange)
         )
-  (advice-remove 'cfw:render-toolbar #'calfw-blocks-render-toolbar)
-  (advice-remove 'cfw:open-calendar-buffer #'calfw-blocks-scroll-to-initial-visible-time)
-  ;; (advice-remove 'cfw:cp-update #'calfw-blocks-scroll-to-initial-visible-time-after-update)
-  (advice-remove 'cfw:cp-update #'calfw-blocks-cp-update)
-  (advice-remove 'cfw:org-get-timerange #'calfw-blocks-org-get-timerange)))
+    (advice-remove 'cfw:render-toolbar #'calfw-blocks-render-toolbar)
+    (advice-remove 'cfw:open-calendar-buffer #'calfw-blocks-scroll-to-initial-visible-time)
+    ;; (advice-remove 'cfw:cp-update #'calfw-blocks-scroll-to-initial-visible-time-after-update)
+    (advice-remove 'cfw:cp-update #'calfw-blocks-cp-update)
+    (advice-remove 'cfw:org-get-timerange #'calfw-blocks-org-get-timerange)))
 
 
 (defun calfw-blocks-local-turn-on ()
@@ -1563,10 +1563,15 @@ If TEXT does not have a range, return nil."
   :group 'calfw-blocks
   (if calfw-blocks-mode
       (progn
+        (setq calfw-blocks-old-summary-transformer cfw:org-schedule-summary-transformer)
+        (setq cfw:org-schedule-summary-transformer 'calfw-blocks-org-summary-format)
+
         (advice-add 'cfw:cp-dispatch-view-impl
                     :override #'calfw-blocks-cp-dispatch-view-impl)
         (add-hook 'cfw:calendar-mode-hook #'calfw-blocks-local-turn-on)
         )
+    (setq cfw:org-schedule-summary-transformer calfw-blocks-old-summary-transformer)
+
     (advice-remove 'cfw:cp-dispatch-view-impl
                    #'calfw-blocks-cp-dispatch-view-impl)
     (remove-hook 'cfw:calendar-mode-hook #'calfw-blocks-local-turn-on)))
