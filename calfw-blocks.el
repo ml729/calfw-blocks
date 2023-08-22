@@ -136,28 +136,30 @@ Displays full name if nil.")
 
 
 ;; Calendar model and params
+(defvar calfw-blocks-view-dipatch-funcs
+  '((month .  cfw:view-month)
+    (week .  cfw:view-week)
+    (two-weeks .  cfw:view-two-weeks)
+    (day .  cfw:view-day)
+    (block-week .  calfw-blocks-view-block-week)
+    (block-day .  calfw-blocks-view-block-day)
+    (block-2-day .  calfw-blocks-view-block-2-day)
+    (block-3-day .  calfw-blocks-view-block-3-day)
+    (block-4-day .  calfw-blocks-view-block-4-day)
+    (block-5-day .  calfw-blocks-view-block-5-day)
+    (block-7-day .  calfw-blocks-view-block-7-day)
+    (transpose-8-day .  calfw-blocks-view-transpose-8-day)
+    (transpose-10-day .  calfw-blocks-view-transpose-10-day)
+    (transpose-12-day .  calfw-blocks-view-transpose-12-day)
+    (transpose-14-day .  calfw-blocks-view-transpose-14-day)
+    (transpose-two-weeks . calfw-blocks-view-transpose-two-weeks))
+  "Dispatch functions for calfw views.")
 
 (defun calfw-blocks-cp-dispatch-view-impl (view)
   "[internal] Return a view function which is corresponding to the view symbol.
 VIEW is a symbol of the view type."
-  (cond
-   ((eq 'month     view)  'cfw:view-month)
-   ((eq 'week      view)  'cfw:view-week)
-   ((eq 'two-weeks view)  'cfw:view-two-weeks)
-   ((eq 'day       view)  'cfw:view-day)
-   ((eq 'block-week       view)  'calfw-blocks-view-block-week)
-   ((eq 'block-day       view)  'calfw-blocks-view-block-day)
-   ((eq 'block-2-day       view)  'calfw-blocks-view-block-2-day)
-   ((eq 'block-3-day       view)  'calfw-blocks-view-block-3-day)
-   ((eq 'block-4-day       view)  'calfw-blocks-view-block-4-day)
-   ((eq 'block-5-day       view)  'calfw-blocks-view-block-5-day)
-   ((eq 'block-7-day       view)  'calfw-blocks-view-block-7-day)
-   ((eq 'transpose-8-day       view)  'calfw-blocks-view-transpose-8-day)
-   ((eq 'transpose-10-day       view)  'calfw-blocks-view-transpose-10-day)
-   ((eq 'transpose-12-day       view)  'calfw-blocks-view-transpose-12-day)
-   ((eq 'transpose-14-day       view)  'calfw-blocks-view-transpose-14-day)
-   ((eq 'transpose-two-weeks    view) 'calfw-blocks-view-transpose-two-weeks)
-   (t (error "Not found such view : %s" view))))
+  (or (alist-get view calfw-blocks-view-dipatch-funcs)
+      (error "Not found such view : %s" view)))
 
 
 ;; Transpose
@@ -607,6 +609,15 @@ Moves forward if NUM is negative."
         (insert VL (cfw:rt (cfw:render-center cell-width name)
                            (cfw:render-get-week-face i 'cfw:face-header)))))
 
+(defvar calfw-blocks-toolbar-views
+  '(("Day" . block-day)
+    ("3-Day" . block-3-day)
+    ("Week" . block-week)
+    ("Two Week" . two-weeks)
+    ("W^T" . transpose-8-day)
+    ("2W^T" . transpose-14-day )
+    ("Month" . month)))
+
 (defun calfw-blocks-render-toolbar (width current-view prev-cmd next-cmd)
   "[internal] Return a text of the toolbar.
 
@@ -618,32 +629,23 @@ command, such as `cfw:navi-previous(next)-month-command' and
   (let* ((prev (cfw:render-button " < " prev-cmd))
          (today (cfw:render-button "Today" 'cfw:navi-goto-today-command))
          (next (cfw:render-button " > " next-cmd))
-         (month (cfw:render-button
-                 "Month" 'cfw:change-view-month
-                 (eq current-view 'month)))
-         (tweek (cfw:render-button
-                 "Two Weeks" 'cfw:change-view-two-weeks
-                 (eq current-view 'two-weeks)))
-         (transpose-two-week (cfw:render-button
-                 "2W^T" 'calfw-blocks-change-view-transpose-14-day
-                 (eq current-view 'transpose-14-day)))
-         (transpose-week (cfw:render-button
-                 "W^T" 'calfw-blocks-change-view-transpose-8-day
-                 (eq current-view 'transpose-8-day)))
-         (week (cfw:render-button
-                "Week" 'calfw-blocks-change-view-block-week
-                (eq current-view 'block-week)))
-         (3day (cfw:render-button
-                "3-Day" (lambda  () (interactive) (calfw-blocks-change-view-block-nday 3))
-                (eq current-view 'block-3-day)))
-         (day (cfw:render-button
-               "Day" (lambda () (interactive) (calfw-blocks-change-view-block-nday 1))
-               (eq current-view 'block-day)))
          (sp  " ")
          (toolbar-text
           (cfw:render-add-right
            width (concat sp prev sp next sp today sp)
-           (concat day sp 3day sp week sp tweek sp transpose-week sp transpose-two-week sp month sp))))
+           (cl-loop for (title . view) in calfw-blocks-toolbar-views
+                    for fn = (let ((view view)) ;; Enable lexical-binding
+                               (lambda ()
+                                 (interactive)
+                                 (cfw:cp-set-view (cfw:cp-get-component)
+                                                  view)))
+                    concat
+                    (cfw:render-button
+                     title
+                     fn
+                     (eq current-view view))
+                    concat
+                    sp))))
     (cfw:render-default-content-face toolbar-text 'cfw:face-toolbar)))
 
 (advice-add 'cfw:render-toolbar :override 'calfw-blocks-render-toolbar)
