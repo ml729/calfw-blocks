@@ -57,7 +57,6 @@ Also used for events with a start time and no end time."
   :group 'calfw-blocks
   :type 'boolean)
 
-
 (defcustom calfw-blocks-show-current-time-indicator t
   "Whether to show a line indicating the current time."
   :group 'calfw-blocks
@@ -67,6 +66,9 @@ Also used for events with a start time and no end time."
   "Whether time grid lines should cut through vertical lines."
   :group 'calfw-blocks
   :type 'boolean)
+
+(defcustom calfw-blocks-inherit-calfw-colors t
+  "Whether to inherit calendar colors from calfw settings or override with calfw-blocks-colors-list colors.")
 
 (defcustom calfw-blocks-colors-list
   '("#ef7969"
@@ -1271,9 +1273,12 @@ is added at the beginning of a block to indicate it is the beginning."
 (defun calfw-blocks-zip-with-faces (blocks)
   (let ((blocks-with-faces '()))
     (dotimes (i (length blocks))
-      (push (cons (nth i blocks)
-                  (nth (mod i (length calfw-blocks-faces-list)) calfw-blocks-faces-list))
-            blocks-with-faces))
+      (let ((inherited-color (get-text-property 0 'font-lock-face (car (nth i blocks)))))
+        (push (cons (nth i blocks)
+                    (if (and calfw-blocks-inherit-calfw-colors inherited-color)
+                        inherited-color
+                        (nth (mod i (length calfw-blocks-faces-list)) calfw-blocks-faces-list)))
+              blocks-with-faces)))
     (reverse blocks-with-faces)))
 
 (defun calfw-blocks-render-all-day-events (lines cell-width cell-height)
