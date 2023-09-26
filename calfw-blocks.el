@@ -106,6 +106,7 @@ Displays full name if nil.")
     (3 . block-3-day)
     (4 . block-4-day)
     (5 . block-5-day)
+    (7 . block-7-day)
     (10 . block-10-day)))
 
 
